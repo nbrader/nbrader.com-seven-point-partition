@@ -389,7 +389,7 @@ GameObject:
   - component: {fileID: 569949939}
   - component: {fileID: 569949938}
   m_Layer: 5
-  m_Name: Text (TMP) (1)
+  m_Name: Result Text (TMP)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -440,8 +440,6 @@ MonoBehaviour:
     Swing Line
 
     Pan Camera
-
-    Extend Bar
 
     Zoom'
   m_isRightToLeft: 0
@@ -1021,7 +1019,7 @@ GameObject:
   - component: {fileID: 1967250891}
   - component: {fileID: 1967250890}
   m_Layer: 5
-  m_Name: Text (TMP)
+  m_Name: InputType Text (TMP)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1073,8 +1071,6 @@ MonoBehaviour:
 
     Left
     Click & Drag (On Background):
-
-    Scroll (On Line):
 
     Scroll (On Background):'
   m_isRightToLeft: 0

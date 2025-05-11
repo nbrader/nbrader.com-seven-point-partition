@@ -259,13 +259,8 @@ public class SevenPointPartitioner : MonoBehaviour
             }
         }
 
-        // Handle mouse wheel input to extend or contract the hovered half line
         float scrollInput = Input.GetAxis("Mouse ScrollWheel");
-        if (closestLine != null && Mathf.Abs(scrollInput) > 0.01f)
-        {
-            AdjustLineLength(closestLine, scrollInput);
-        }
-        else if (Mathf.Abs(scrollInput) > 0.01f)
+        if (Mathf.Abs(scrollInput) > 0.01f)
         {
             // Handle camera zooming
             float scrollDelta = scrollInput;
@@ -476,16 +471,6 @@ public class SevenPointPartitioner : MonoBehaviour
     {
         Vector3 screenPoint = new Vector3(screenPosition.x, screenPosition.y, -Camera.main.transform.position.z);
         return Camera.main.ScreenToWorldPoint(screenPoint);
-    }
-
-    private void AdjustLineLength(Line line, float scrollAmount)
-    {
-        float lengthChange = scrollAmount * 0.1f; // Adjust the 0.1f to control the rate of length change
-        Vector3 direction = (line.adjacentPoint.transform.position - line.pivotPoint.transform.position).normalized;
-        line.adjacentPoint.transform.position += direction * lengthChange;
-
-        // Update all lines after changing the length
-        UpdateLines();
     }
 
     public void StartDragging(SevenPointPartitionerPartType partType)
