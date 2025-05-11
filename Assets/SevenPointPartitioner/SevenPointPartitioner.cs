@@ -49,21 +49,9 @@ public class SevenPointPartitioner : MonoBehaviour
 
     private void Awake()
     {
-        if (points == null || points.Count != 7)
-        {
-            Debug.LogError("7 points are required.");
-            return;
-        }
-
         foreach (var point in points)
         {
             point.parentSevenPointPartitioner = this;
-        }
-
-        if (lines == null || lines.Count != 3)
-        {
-            Debug.LogError("3 points are required.");
-            return;
         }
 
         foreach (var line in lines)
