@@ -534,8 +534,6 @@ MonoBehaviour:
       m_Calls: []
   m_text: 'Reposition Points
 
-    Swing Line
-
     Pan Camera
 
     Zoom'
@@ -1164,12 +1162,10 @@ MonoBehaviour:
       m_Calls: []
   m_text: 'Left Click & Drag (On Point):
 
-    Left Click & Drag (On Line):
+    Left Click & Drag (On Background):
 
-    Left
-    Click & Drag (On Background):
-
-    Scroll (On Background):'
+    Scroll
+    (On Background):'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
