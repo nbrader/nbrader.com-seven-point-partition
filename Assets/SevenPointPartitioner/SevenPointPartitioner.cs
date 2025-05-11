@@ -77,10 +77,12 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public void UpdateLines()
     {
-        foreach (var line in lines)
-        {
-            //
-        }
+        lines[0].endPoint1.position = points[0].transform.position;
+        lines[0].endPoint2.position = points[1].transform.position;
+        lines[1].endPoint1.position = points[2].transform.position;
+        lines[1].endPoint2.position = points[3].transform.position;
+        lines[2].endPoint1.position = points[4].transform.position;
+        lines[2].endPoint2.position = points[5].transform.position;
     }
 
     public void MovePoint(Point point, Vector3 position)
