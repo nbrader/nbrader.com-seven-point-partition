@@ -435,9 +435,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Reshape Linkage
+  m_text: 'Reposition Points
 
-    Swing Bar
+    Swing Line
 
     Pan Camera
 
@@ -1067,14 +1067,14 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Left Click & Drag (On Joint):
+  m_text: 'Left Click & Drag (On Point):
 
-    Left Click & Drag (On Bar):
+    Left Click & Drag (On Line):
 
     Left
     Click & Drag (On Background):
 
-    Scroll (On Bar):
+    Scroll (On Line):
 
     Scroll (On Background):'
   m_isRightToLeft: 0
@@ -1261,7 +1261,7 @@ MonoBehaviour:
   - {fileID: 1572092105}
   - {fileID: 1468947146}
   - {fileID: 827683305}
-  halfBarPrefab: {fileID: 3839745485931276093, guid: ce9a03662fb51d349a1f7a2a5850e197, type: 3}
+  halfLinePrefab: {fileID: 3839745485931276093, guid: ce9a03662fb51d349a1f7a2a5850e197, type: 3}
 --- !u!4 &5187364662768440877 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4132890256589190990, guid: 70998a793881dcb428d2c61b8d072bef, type: 3}

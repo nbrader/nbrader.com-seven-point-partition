@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Bar Material
+  m_Name: Line Material
   m_Shader: {fileID: -6465566751694194690, guid: 9a6da13a860f9f14885b14c3df331d07, type: 3}
   m_ValidKeywords: []
   m_InvalidKeywords: []
