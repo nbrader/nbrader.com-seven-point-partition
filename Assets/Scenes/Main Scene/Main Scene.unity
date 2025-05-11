@@ -1261,7 +1261,7 @@ MonoBehaviour:
   - {fileID: 1572092105}
   - {fileID: 1468947146}
   - {fileID: 827683305}
-  halfLinePrefab: {fileID: 3839745485931276093, guid: ce9a03662fb51d349a1f7a2a5850e197, type: 3}
+  linePrefab: {fileID: 3839745485931276093, guid: ce9a03662fb51d349a1f7a2a5850e197, type: 3}
 --- !u!4 &5187364662768440877 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 4132890256589190990, guid: 70998a793881dcb428d2c61b8d072bef, type: 3}

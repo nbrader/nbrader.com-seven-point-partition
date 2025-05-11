@@ -33,13 +33,13 @@ public enum SevenPointPartitionerPartType
 public class SevenPointPartitioner : MonoBehaviour
 {
     public List<Point> points;
-    public GameObject halfLinePrefab;  // Prefab for a half line
+    public GameObject linePrefab;  // Prefab for a half line
     readonly float lineVisibleThickness = 0.1f;
     readonly float lineColliderThicknessSize = 10f;
     readonly float basePointColliderThickness = 0.1f; // Base collider thickness for points
     readonly float baseLineColliderThickness = 0.1f; // Base collider thickness for lines
 
-    private HalfLine[] halfLines;
+    private HalfLine[] lines;
 
     private Point closestPoint;
     private HalfLine closestHalfLine;
@@ -65,16 +65,16 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Initialize halfLines arrays
-        halfLines = new HalfLine[points.Count * 2];
+        lines = new HalfLine[points.Count * 2];
 
         // Create Line objects
         for (int i = 0; i < points.Count; i++)
         {
             // Create half lines
-            GameObject halfLineObj1 = Instantiate(halfLinePrefab, transform);
-            GameObject halfLineObj2 = Instantiate(halfLinePrefab, transform);
-            halfLines[i * 2] = halfLineObj1.GetComponent<HalfLine>();
-            halfLines[i * 2 + 1] = halfLineObj2.GetComponent<HalfLine>();
+            GameObject halfLineObj1 = Instantiate(linePrefab, transform);
+            GameObject halfLineObj2 = Instantiate(linePrefab, transform);
+            lines[i * 2] = halfLineObj1.GetComponent<HalfLine>();
+            lines[i * 2 + 1] = halfLineObj2.GetComponent<HalfLine>();
 
             // Assign DraggableHalfLine components and their references
             HalfLine halfLine1 = halfLineObj1.GetComponent<HalfLine>();
@@ -117,15 +117,15 @@ public class SevenPointPartitioner : MonoBehaviour
             float nextHalfDistance = nextDirection.magnitude;
             float prevHalfDistance = prevDirection.magnitude;
 
-            halfLines[i * 2].transform.position = currentPoint.position;
-            halfLines[i * 2].transform.right = nextDirection;
-            halfLines[i * 2].transform.localScale = new Vector3(nextHalfDistance, lineVisibleThickness, 1);
-            halfLines[i * 2].GetComponent<BoxCollider2D>().size = new Vector2(1, lineColliderThicknessSize);
+            lines[i * 2].transform.position = currentPoint.position;
+            lines[i * 2].transform.right = nextDirection;
+            lines[i * 2].transform.localScale = new Vector3(nextHalfDistance, lineVisibleThickness, 1);
+            lines[i * 2].GetComponent<BoxCollider2D>().size = new Vector2(1, lineColliderThicknessSize);
 
-            halfLines[i * 2 + 1].transform.position = currentPoint.position;
-            halfLines[i * 2 + 1].transform.right = prevDirection;
-            halfLines[i * 2 + 1].transform.localScale = new Vector3(prevHalfDistance, lineVisibleThickness, 1);
-            halfLines[i * 2 + 1].GetComponent<BoxCollider2D>().size = new Vector2(1, lineColliderThicknessSize);
+            lines[i * 2 + 1].transform.position = currentPoint.position;
+            lines[i * 2 + 1].transform.right = prevDirection;
+            lines[i * 2 + 1].transform.localScale = new Vector3(prevHalfDistance, lineVisibleThickness, 1);
+            lines[i * 2 + 1].GetComponent<BoxCollider2D>().size = new Vector2(1, lineColliderThicknessSize);
         }
     }
 
@@ -158,7 +158,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public (HalfLine closestHalfLine, float closestDistance)? FindClosestHalfLine(Vector3 inputPosition)
     {
-        Edge3D[] edges = halfLines.Select(line => new Edge3D("", line.pivotPoint.transform.position, (line.pivotPoint.transform.position + line.adjacentPoint.transform.position) / 2)).ToArray();
+        Edge3D[] edges = lines.Select(line => new Edge3D("", line.pivotPoint.transform.position, (line.pivotPoint.transform.position + line.adjacentPoint.transform.position) / 2)).ToArray();
 
         // Check _EDGES_ for nearest point
         Vector3 nearestPointOnEdge = Vector3.zero;
@@ -211,7 +211,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
         if (nearestEdgeIndex.HasValue)
         {
-            return (closestHalfLine: halfLines[nearestEdgeIndex.Value], closestDistance: nearestPointDistanceOnEdge);
+            return (closestHalfLine: lines[nearestEdgeIndex.Value], closestDistance: nearestPointDistanceOnEdge);
         }
         else
         {
@@ -299,7 +299,7 @@ public class SevenPointPartitioner : MonoBehaviour
         {
             point.Highlight(false);
         }
-        foreach (HalfLine halfLine in halfLines)
+        foreach (HalfLine halfLine in lines)
         {
             halfLine.Highlight(false);
         }
