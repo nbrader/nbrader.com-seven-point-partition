@@ -3,7 +3,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public enum LinkagePartType
+public enum SevenPointPartitionerPartType
 {
     Joint = 0,
     HalfBar,
@@ -30,9 +30,9 @@ public enum LinkagePartType
 /// of endpoints and therefore there will be a (possibly zero) range of no solutions for the other
 /// joint beyond the angle it reached at that extreme.
 /// </summary>
-public class Linkage : MonoBehaviour
+public class SevenPointPartitioner : MonoBehaviour
 {
-    public List<Joint> joints;
+    public List<Point> points;
     public GameObject halfBarPrefab;  // Prefab for a half bar
     readonly float barVisibleThickness = 0.1f;
     readonly float barColliderThicknessSize = 10f;
@@ -41,9 +41,9 @@ public class Linkage : MonoBehaviour
 
     private HalfBar[] halfBars;
 
-    private Joint closestJoint;
+    private Point closestJoint;
     private HalfBar closestHalfBar;
-    private LinkagePartType latestDraggedPartType = LinkagePartType.Joint;
+    private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Joint;
     private bool isDragging = false; // Flag to indicate if dragging is in progress
     private bool isCameraDragging = false; // Flag to indicate if camera dragging is in progress
 
@@ -53,22 +53,22 @@ public class Linkage : MonoBehaviour
     float barColliderThickness;
     private void Awake()
     {
-        if (joints == null || joints.Count != 4)
+        if (points == null || points.Count != 7)
         {
-            Debug.LogError("4 joints are required.");
+            Debug.LogError("7 points are required.");
             return;
         }
 
-        foreach (var joint in joints)
+        foreach (var point in points)
         {
-            joint.parentLinkage = this;
+            point.parentSevenPointPartitioner = this;
         }
 
         // Initialize halfBars arrays
-        halfBars = new HalfBar[joints.Count * 2];
+        halfBars = new HalfBar[points.Count * 2];
 
         // Create Bar objects
-        for (int i = 0; i < joints.Count; i++)
+        for (int i = 0; i < points.Count; i++)
         {
             // Create half bars
             GameObject halfBarObj1 = Instantiate(halfBarPrefab, transform);
@@ -83,8 +83,8 @@ public class Linkage : MonoBehaviour
             // Ensure half bars are created properly with the necessary components
             if (halfBar1 != null && halfBar2 != null)
             {
-                halfBar1.Initialize(this, joints[i], joints[Maths.mod(i + 1, joints.Count)], joints[Maths.mod(i + 2, joints.Count)], joints[Maths.mod(i + 3, joints.Count)]);
-                halfBar2.Initialize(this, joints[i], joints[Maths.mod(i - 1, joints.Count)], joints[Maths.mod(i - 2, joints.Count)], joints[Maths.mod(i - 3, joints.Count)]);
+                halfBar1.Initialize(this, points[i], points[Maths.mod(i + 1, points.Count)], points[Maths.mod(i + 2, points.Count)], points[Maths.mod(i + 3, points.Count)]);
+                halfBar2.Initialize(this, points[i], points[Maths.mod(i - 1, points.Count)], points[Maths.mod(i - 2, points.Count)], points[Maths.mod(i - 3, points.Count)]);
             }
             else
             {
@@ -98,15 +98,15 @@ public class Linkage : MonoBehaviour
 
     public void UpdateBars()
     {
-        if (joints == null || joints.Count < 2) return;
+        if (points == null || points.Count < 2) return;
 
-        for (int i = 0; i < joints.Count; i++)
+        for (int i = 0; i < points.Count; i++)
         {
-            int nextIndex = (i + 1) % joints.Count;
-            int prevIndex = (i - 1 + joints.Count) % joints.Count;
-            Transform currentJoint = joints[i].transform;
-            Transform nextJoint = joints[nextIndex].transform;
-            Transform prevJoint = joints[prevIndex].transform;
+            int nextIndex = (i + 1) % points.Count;
+            int prevIndex = (i - 1 + points.Count) % points.Count;
+            Transform currentJoint = points[i].transform;
+            Transform nextJoint = points[nextIndex].transform;
+            Transform prevJoint = points[prevIndex].transform;
 
             // Calculate the position and scale for the full bar
             Vector3 direction = nextJoint.position - currentJoint.position;
@@ -129,7 +129,7 @@ public class Linkage : MonoBehaviour
         }
     }
 
-    public void MoveJoint(Joint joint, Vector3 position)
+    public void MoveJoint(Point joint, Vector3 position)
     {
         if (joint != null)
         {
@@ -138,12 +138,12 @@ public class Linkage : MonoBehaviour
         }
     }
 
-    public (Joint closestJoint, float closestDistance) FindClosestJoint(Vector3 position)
+    public (Point closestJoint, float closestDistance) FindClosestJoint(Vector3 position)
     {
-        Joint closest = null;
+        Point closest = null;
         float minDistance = float.MaxValue;
 
-        foreach (Joint joint in joints)
+        foreach (Point joint in points)
         {
             float distance = Vector3.Distance(position, joint.transform.position);
             if (distance < minDistance)
@@ -295,10 +295,9 @@ public class Linkage : MonoBehaviour
         }
 
         // Reset highlights
-        foreach (Joint joint in joints)
+        foreach (Point joint in points)
         {
             joint.Highlight(false);
-            joint.SetAngleRanges(0, 0, false, Color.red, 0, 0, false, Color.yellow);
         }
         foreach (HalfBar halfBar in halfBars)
         {
@@ -325,7 +324,6 @@ public class Linkage : MonoBehaviour
             adjToOppDist = (oppBeforeDrag - adjBeforeDrag).magnitude;
             oppToAltDist = (altBeforeDrag - oppBeforeDrag).magnitude;
             altToPivotDist = (pivotBeforeDrag - altBeforeDrag).magnitude;
-            UpdateAngleRanges(altToPivotDist, oppToAltDist, adjToOppDist, pivotToAdjDist);
         }
     }
 
@@ -334,19 +332,19 @@ public class Linkage : MonoBehaviour
         isDragging = true; // Set the dragging flag to true
         if (closestJoint != null)
         {
-            latestDraggedPartType = LinkagePartType.Joint;
+            latestDraggedPartType = SevenPointPartitionerPartType.Joint;
             OnBeginDragJoint(eventData);
         }
         else if (closestHalfBar != null)
         {
-            latestDraggedPartType = LinkagePartType.HalfBar;
+            latestDraggedPartType = SevenPointPartitionerPartType.HalfBar;
             OnBeginDragHalfBar(eventData);
         }
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (latestDraggedPartType == LinkagePartType.Joint)
+        if (latestDraggedPartType == SevenPointPartitionerPartType.Joint)
         {
             OnDragJoint(eventData);
         }
@@ -359,7 +357,7 @@ public class Linkage : MonoBehaviour
     public void OnEndDrag(PointerEventData eventData)
     {
         isDragging = false; // Reset the dragging flag to false
-        if (latestDraggedPartType == LinkagePartType.Joint)
+        if (latestDraggedPartType == SevenPointPartitionerPartType.Joint)
         {
             OnEndDragJoint(eventData);
         }
@@ -382,7 +380,7 @@ public class Linkage : MonoBehaviour
             Vector3 worldPoint = ScreenToWorldPoint(eventData.position);
             worldPoint.z = 0; // Ensure the joint stays on the z = 0 plane
 
-            // Move the joint via the LinkageManager
+            // Move the joint via the SevenPointPartitionerManager
             MoveJoint(closestJoint, worldPoint);
         }
     }
@@ -422,41 +420,13 @@ public class Linkage : MonoBehaviour
         return (solutionsExist: solutionsExist, oppPosition1: oppTarget_1, oppPosition2: oppTarget_2);
     }
 
-    public void UpdateAngleRanges(float altToPivotDist, float oppToAltDist, float adjToOppDist, float pivotToAdjDist)
-    {
-        var intersectionData1 = Maths.CircleCircleIntersectionXAndY(altToPivotDist, oppToAltDist + adjToOppDist, pivotToAdjDist);
-        var intersectionData2 = Maths.CircleCircleIntersectionXAndY(altToPivotDist, Mathf.Abs(oppToAltDist - adjToOppDist), pivotToAdjDist);
-
-        bool showAngle1 = intersectionData1.IntersectionsExist;
-        bool showAngle2 = intersectionData2.IntersectionsExist;
-        float degreesBetweenExtremes1 = 0;
-        float degreesBetweenExtremes2 = 0;
-        if (showAngle1)
-        {
-            var x1 = intersectionData1.IntersectionDistanceFromOriginAlongLineConnectingOrigins;
-            var y1 = intersectionData1.HalfSeparationOfIntersections;
-            degreesBetweenExtremes1 = 360f - Mathf.Rad2Deg * 2 * Mathf.Atan2(y1, x1);
-        }
-        if (showAngle2)
-        {
-            var x2 = intersectionData2.IntersectionDistanceFromOriginAlongLineConnectingOrigins;
-            var y2 = intersectionData2.HalfSeparationOfIntersections;
-            degreesBetweenExtremes2 = Mathf.Rad2Deg * 2 * Mathf.Atan2(y2, x2);
-        }
-
-        Vector3 pivotToAlt = altBeforeDrag - pivotBeforeDrag;
-        float degreesCCWFromDownOfCentre1 = Vector3.SignedAngle(-pivotToAlt, Vector3.down, Vector3.back);
-        float degreesCCWFromDownOfCentre2 = Vector3.SignedAngle(pivotToAlt, Vector3.down, Vector3.back);
-        closestHalfBar.pivotJoint.SetAngleRanges(degreesCCWFromDownOfCentre1, degreesBetweenExtremes1, showAngle1, Color.red, degreesCCWFromDownOfCentre2, degreesBetweenExtremes2, showAngle2, Color.yellow);
-    }
-
     Vector3 lastAdj = Vector3.zero;
     Vector3 lastOpp = Vector3.zero;
     public void OnDragHalfBar(PointerEventData eventData)
     {
         if (closestHalfBar != null)
         {
-            // Calculate new linkage position
+            // Calculate new SevenPointPartitioner position
             // First calculate possible positions for opposite joint
             float minDistViaOpp = Mathf.Abs(adjToOppDist - oppToAltDist);
             float maxDistViaOpp = adjToOppDist + oppToAltDist;
@@ -468,7 +438,7 @@ public class Linkage : MonoBehaviour
             float adjTargetToAltDist = adjTargetToAlt.magnitude;
             var (solutionsExist, oppTarget_1, oppTarget_2) = GetPossibleOppPositions(adjTargetToAltDist, minDistViaOpp, maxDistViaOpp, oppToAltDist, adjToOppDist, adjTarget, adjTargetToAlt);
 
-            // If solutions don't exist then show linkage before dragging
+            // If solutions don't exist then show SevenPointPartitioner before dragging
             // If solutions do exist, pick one closest to previously calculated for continuity of motion
             Vector3 newOpp;
             if (!solutionsExist)
@@ -499,7 +469,6 @@ public class Linkage : MonoBehaviour
     public void OnEndDragHalfBar(PointerEventData eventData)
     {
         // Optional: Handle end drag logic if needed
-        closestHalfBar.pivotJoint.SetAngleRanges(0f, 0f, false, Color.red, 0f, 0f, false, Color.yellow);
         closestHalfBar = null;
     }
 
@@ -519,7 +488,7 @@ public class Linkage : MonoBehaviour
         UpdateBars();
     }
 
-    public void StartDragging(LinkagePartType partType)
+    public void StartDragging(SevenPointPartitionerPartType partType)
     {
         latestDraggedPartType = partType;
         isDragging = true;

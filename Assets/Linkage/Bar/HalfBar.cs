@@ -4,27 +4,27 @@ using UnityEngine.EventSystems;
 public class HalfBar : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler
 {
     [HideInInspector]
-    public Linkage parentLinkage;
+    public SevenPointPartitioner parentSevenPointPartitioner;
     public SpriteRenderer spriteRenderer;
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        parentLinkage.OnBeginDrag(eventData);
+        parentSevenPointPartitioner.OnBeginDrag(eventData);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        parentLinkage.OnDrag(eventData);
+        parentSevenPointPartitioner.OnDrag(eventData);
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        parentLinkage.OnEndDrag(eventData);
+        parentSevenPointPartitioner.OnEndDrag(eventData);
     }
 
-    public void Initialize(Linkage parentLinkage, Joint pivotJoint, Joint adjacentJoint, Joint oppositeJoint, Joint alternativeAdjacentJoint)
+    public void Initialize(SevenPointPartitioner parentSevenPointPartitioner, Point pivotJoint, Point adjacentJoint, Point oppositeJoint, Point alternativeAdjacentJoint)
     {
-        this.parentLinkage = parentLinkage;
+        this.parentSevenPointPartitioner = parentSevenPointPartitioner;
         this.pivotJoint = pivotJoint;
         this.adjacentJoint = adjacentJoint;
         this.oppositeJoint = oppositeJoint;
@@ -33,10 +33,10 @@ public class HalfBar : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragH
         Highlight(false);
     }
 
-    public Joint pivotJoint; // The pivot joint
-    public Joint adjacentJoint; // The joint adjacent to the pivot on the other end of the bar
-    public Joint oppositeJoint; // The joint adjacent to the pivot on the other end of the bar
-    public Joint alternativeAdjacentJoint; // The joint adjacent to the pivot on the other end of the bar
+    public Point pivotJoint; // The pivot joint
+    public Point adjacentJoint; // The joint adjacent to the pivot on the other end of the bar
+    public Point oppositeJoint; // The joint adjacent to the pivot on the other end of the bar
+    public Point alternativeAdjacentJoint; // The joint adjacent to the pivot on the other end of the bar
     public void Highlight(bool isHighlight)
     {
         spriteRenderer.color = isHighlight ? Color.yellow : Color.blue;

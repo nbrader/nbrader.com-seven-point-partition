@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Joint Material
+  m_Name: Point Material
   m_Shader: {fileID: -6465566751694194690, guid: 6817247bf122946488c6ab1195f7455e, type: 3}
   m_ValidKeywords: []
   m_InvalidKeywords: []
