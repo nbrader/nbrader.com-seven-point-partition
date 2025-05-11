@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class HalfLine : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler
+public class Line : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler
 {
     [HideInInspector]
     public SevenPointPartitioner parentSevenPointPartitioner;

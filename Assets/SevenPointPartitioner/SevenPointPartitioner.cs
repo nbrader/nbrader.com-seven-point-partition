@@ -6,7 +6,7 @@ using UnityEngine.EventSystems;
 public enum SevenPointPartitionerPartType
 {
     Point = 0,
-    HalfLine,
+    Line,
 }
 
 /// <summary>
@@ -39,10 +39,10 @@ public class SevenPointPartitioner : MonoBehaviour
     readonly float basePointColliderThickness = 0.1f; // Base collider thickness for points
     readonly float baseLineColliderThickness = 0.1f; // Base collider thickness for lines
 
-    private HalfLine[] lines;
+    private Line[] lines;
 
     private Point closestPoint;
-    private HalfLine closestHalfLine;
+    private Line closestLine;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
     private bool isDragging = false; // Flag to indicate if dragging is in progress
     private bool isCameraDragging = false; // Flag to indicate if camera dragging is in progress
@@ -64,31 +64,31 @@ public class SevenPointPartitioner : MonoBehaviour
             point.parentSevenPointPartitioner = this;
         }
 
-        // Initialize halfLines arrays
-        lines = new HalfLine[points.Count * 2];
+        // Initialize lines arrays
+        lines = new Line[points.Count * 2];
 
         // Create Line objects
         for (int i = 0; i < points.Count; i++)
         {
             // Create half lines
-            GameObject halfLineObj1 = Instantiate(linePrefab, transform);
-            GameObject halfLineObj2 = Instantiate(linePrefab, transform);
-            lines[i * 2] = halfLineObj1.GetComponent<HalfLine>();
-            lines[i * 2 + 1] = halfLineObj2.GetComponent<HalfLine>();
+            GameObject lineObj1 = Instantiate(linePrefab, transform);
+            GameObject lineObj2 = Instantiate(linePrefab, transform);
+            lines[i * 2] = lineObj1.GetComponent<Line>();
+            lines[i * 2 + 1] = lineObj2.GetComponent<Line>();
 
-            // Assign DraggableHalfLine components and their references
-            HalfLine halfLine1 = halfLineObj1.GetComponent<HalfLine>();
-            HalfLine halfLine2 = halfLineObj2.GetComponent<HalfLine>();
+            // Assign DraggableLine components and their references
+            Line line1 = lineObj1.GetComponent<Line>();
+            Line line2 = lineObj2.GetComponent<Line>();
 
             // Ensure half lines are created properly with the necessary components
-            if (halfLine1 != null && halfLine2 != null)
+            if (line1 != null && line2 != null)
             {
-                halfLine1.Initialize(this, points[i], points[Maths.mod(i + 1, points.Count)], points[Maths.mod(i + 2, points.Count)], points[Maths.mod(i + 3, points.Count)]);
-                halfLine2.Initialize(this, points[i], points[Maths.mod(i - 1, points.Count)], points[Maths.mod(i - 2, points.Count)], points[Maths.mod(i - 3, points.Count)]);
+                line1.Initialize(this, points[i], points[Maths.mod(i + 1, points.Count)], points[Maths.mod(i + 2, points.Count)], points[Maths.mod(i + 3, points.Count)]);
+                line2.Initialize(this, points[i], points[Maths.mod(i - 1, points.Count)], points[Maths.mod(i - 2, points.Count)], points[Maths.mod(i - 3, points.Count)]);
             }
             else
             {
-                Debug.LogError("DraggableHalfLine component missing on half line prefab.");
+                Debug.LogError("DraggableLine component missing on half line prefab.");
             }
         }
 
@@ -156,7 +156,7 @@ public class SevenPointPartitioner : MonoBehaviour
         return (closestPoint: closest, closestDistance: minDistance);
     }
 
-    public (HalfLine closestHalfLine, float closestDistance)? FindClosestHalfLine(Vector3 inputPosition)
+    public (Line closestLine, float closestDistance)? FindClosestLine(Vector3 inputPosition)
     {
         Edge3D[] edges = lines.Select(line => new Edge3D("", line.pivotPoint.transform.position, (line.pivotPoint.transform.position + line.adjacentPoint.transform.position) / 2)).ToArray();
 
@@ -211,7 +211,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
         if (nearestEdgeIndex.HasValue)
         {
-            return (closestHalfLine: lines[nearestEdgeIndex.Value], closestDistance: nearestPointDistanceOnEdge);
+            return (closestLine: lines[nearestEdgeIndex.Value], closestDistance: nearestPointDistanceOnEdge);
         }
         else
         {
@@ -242,28 +242,28 @@ public class SevenPointPartitioner : MonoBehaviour
         if (closestPointDistance < pointColliderThickness)
         {
             closestPoint = closestPointData.closestPoint;
-            closestHalfLine = null;
+            closestLine = null;
         }
         else
         {
-            var closestHalfLineData = FindClosestHalfLine(pointerPos);
-            if (closestHalfLineData.HasValue && closestHalfLineData.Value.closestDistance <= lineColliderThickness)
+            var closestLineData = FindClosestLine(pointerPos);
+            if (closestLineData.HasValue && closestLineData.Value.closestDistance <= lineColliderThickness)
             {
                 closestPoint = null;
-                closestHalfLine = closestHalfLineData.Value.closestHalfLine;
+                closestLine = closestLineData.Value.closestLine;
             }
             else
             {
                 closestPoint = null;
-                closestHalfLine = null;
+                closestLine = null;
             }
         }
 
         // Handle mouse wheel input to extend or contract the hovered half line
         float scrollInput = Input.GetAxis("Mouse ScrollWheel");
-        if (closestHalfLine != null && Mathf.Abs(scrollInput) > 0.01f)
+        if (closestLine != null && Mathf.Abs(scrollInput) > 0.01f)
         {
-            AdjustHalfLineLength(closestHalfLine, scrollInput);
+            AdjustLineLength(closestLine, scrollInput);
         }
         else if (Mathf.Abs(scrollInput) > 0.01f)
         {
@@ -276,7 +276,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Handle camera dragging
-        if (Input.GetMouseButtonDown(0) && closestPoint == null && closestHalfLine == null)
+        if (Input.GetMouseButtonDown(0) && closestPoint == null && closestLine == null)
         {
             isCameraDragging = true;
             lastMousePosition = Input.mousePosition;
@@ -299,9 +299,9 @@ public class SevenPointPartitioner : MonoBehaviour
         {
             point.Highlight(false);
         }
-        foreach (HalfLine halfLine in lines)
+        foreach (Line line in lines)
         {
-            halfLine.Highlight(false);
+            line.Highlight(false);
         }
 
         // Set latest closest highlight
@@ -310,14 +310,14 @@ public class SevenPointPartitioner : MonoBehaviour
             closestPoint.Highlight(true);
         }
 
-        if (closestHalfLine != null)
+        if (closestLine != null)
         {
-            closestHalfLine.Highlight(true);
+            closestLine.Highlight(true);
 
-            pivotBeforeDrag = closestHalfLine.pivotPoint.transform.position;
-            adjBeforeDrag = closestHalfLine.adjacentPoint.transform.position;
-            altBeforeDrag = closestHalfLine.alternativeAdjacentPoint.transform.position;
-            oppBeforeDrag = closestHalfLine.oppositePoint.transform.position;
+            pivotBeforeDrag = closestLine.pivotPoint.transform.position;
+            adjBeforeDrag = closestLine.adjacentPoint.transform.position;
+            altBeforeDrag = closestLine.alternativeAdjacentPoint.transform.position;
+            oppBeforeDrag = closestLine.oppositePoint.transform.position;
 
             // Calculate angle ranges to display to user
             pivotToAdjDist = (adjBeforeDrag - pivotBeforeDrag).magnitude;
@@ -335,10 +335,10 @@ public class SevenPointPartitioner : MonoBehaviour
             latestDraggedPartType = SevenPointPartitionerPartType.Point;
             OnBeginDragPoint(eventData);
         }
-        else if (closestHalfLine != null)
+        else if (closestLine != null)
         {
-            latestDraggedPartType = SevenPointPartitionerPartType.HalfLine;
-            OnBeginDragHalfLine(eventData);
+            latestDraggedPartType = SevenPointPartitionerPartType.Line;
+            OnBeginDragLine(eventData);
         }
     }
 
@@ -350,7 +350,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
         else
         {
-            OnDragHalfLine(eventData);
+            OnDragLine(eventData);
         }
     }
 
@@ -363,7 +363,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
         else
         {
-            OnEndDragHalfLine(eventData);
+            OnEndDragLine(eventData);
         }
     }
 
@@ -391,7 +391,7 @@ public class SevenPointPartitioner : MonoBehaviour
         closestPoint = null;
     }
 
-    public void OnBeginDragHalfLine(PointerEventData eventData)
+    public void OnBeginDragLine(PointerEventData eventData)
     {
         lastAdj = adjBeforeDrag;
         lastOpp = oppBeforeDrag;
@@ -422,9 +422,9 @@ public class SevenPointPartitioner : MonoBehaviour
 
     Vector3 lastAdj = Vector3.zero;
     Vector3 lastOpp = Vector3.zero;
-    public void OnDragHalfLine(PointerEventData eventData)
+    public void OnDragLine(PointerEventData eventData)
     {
-        if (closestHalfLine != null)
+        if (closestLine != null)
         {
             // Calculate new SevenPointPartitioner position
             // First calculate possible positions for opposite point
@@ -432,7 +432,7 @@ public class SevenPointPartitioner : MonoBehaviour
             float maxDistViaOpp = adjToOppDist + oppToAltDist;
             Vector3 worldPoint = ScreenToWorldPoint(eventData.position);
             worldPoint.z = 0; // Ensure the point stays on the z = 0 plane
-            Vector3 direction = (worldPoint - closestHalfLine.pivotPoint.transform.position).normalized;
+            Vector3 direction = (worldPoint - closestLine.pivotPoint.transform.position).normalized;
             Vector3 adjTarget = pivotBeforeDrag + direction * Vector3.Distance(pivotBeforeDrag, adjBeforeDrag);
             Vector3 adjTargetToAlt = altBeforeDrag - adjTarget;
             float adjTargetToAltDist = adjTargetToAlt.magnitude;
@@ -460,16 +460,16 @@ public class SevenPointPartitioner : MonoBehaviour
 
             lastAdj = adjTarget;
             lastOpp = newOpp;
-            closestHalfLine.adjacentPoint.transform.position = adjTarget;
-            closestHalfLine.oppositePoint.transform.position = newOpp;
+            closestLine.adjacentPoint.transform.position = adjTarget;
+            closestLine.oppositePoint.transform.position = newOpp;
             UpdateLines();
         }
     }
 
-    public void OnEndDragHalfLine(PointerEventData eventData)
+    public void OnEndDragLine(PointerEventData eventData)
     {
         // Optional: Handle end drag logic if needed
-        closestHalfLine = null;
+        closestLine = null;
     }
 
     private Vector3 ScreenToWorldPoint(Vector2 screenPosition)
@@ -478,11 +478,11 @@ public class SevenPointPartitioner : MonoBehaviour
         return Camera.main.ScreenToWorldPoint(screenPoint);
     }
 
-    private void AdjustHalfLineLength(HalfLine halfLine, float scrollAmount)
+    private void AdjustLineLength(Line line, float scrollAmount)
     {
         float lengthChange = scrollAmount * 0.1f; // Adjust the 0.1f to control the rate of length change
-        Vector3 direction = (halfLine.adjacentPoint.transform.position - halfLine.pivotPoint.transform.position).normalized;
-        halfLine.adjacentPoint.transform.position += direction * lengthChange;
+        Vector3 direction = (line.adjacentPoint.transform.position - line.pivotPoint.transform.position).normalized;
+        line.adjacentPoint.transform.position += direction * lengthChange;
 
         // Update all lines after changing the length
         UpdateLines();
@@ -493,10 +493,10 @@ public class SevenPointPartitioner : MonoBehaviour
         latestDraggedPartType = partType;
         isDragging = true;
 
-        pivotBeforeDrag = closestHalfLine.pivotPoint.transform.position;
-        adjBeforeDrag = closestHalfLine.adjacentPoint.transform.position;
-        altBeforeDrag = closestHalfLine.alternativeAdjacentPoint.transform.position;
-        oppBeforeDrag = closestHalfLine.oppositePoint.transform.position;
+        pivotBeforeDrag = closestLine.pivotPoint.transform.position;
+        adjBeforeDrag = closestLine.adjacentPoint.transform.position;
+        altBeforeDrag = closestLine.alternativeAdjacentPoint.transform.position;
+        oppBeforeDrag = closestLine.oppositePoint.transform.position;
         pivotToAdjDist = Vector3.Distance(pivotBeforeDrag, adjBeforeDrag);
         adjToOppDist = Vector3.Distance(adjBeforeDrag, oppBeforeDrag);
         oppToAltDist = Vector3.Distance(altBeforeDrag, oppBeforeDrag);
@@ -510,10 +510,10 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public void RestorePointsToBeforeDrag()
     {
-        closestHalfLine.pivotPoint.transform.position = pivotBeforeDrag;
-        closestHalfLine.adjacentPoint.transform.position = adjBeforeDrag;
-        closestHalfLine.alternativeAdjacentPoint.transform.position = altBeforeDrag;
-        closestHalfLine.oppositePoint.transform.position = oppBeforeDrag;
+        closestLine.pivotPoint.transform.position = pivotBeforeDrag;
+        closestLine.adjacentPoint.transform.position = adjBeforeDrag;
+        closestLine.alternativeAdjacentPoint.transform.position = altBeforeDrag;
+        closestLine.oppositePoint.transform.position = oppBeforeDrag;
     }
 
     private void UpdateSelectionRadius()
