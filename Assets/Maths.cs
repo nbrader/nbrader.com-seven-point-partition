@@ -754,6 +754,11 @@ public class Maths
         return new Vector2(Lerp(v0.x, v1.x, t), Lerp(v0.y, v1.y, t));
     }
 
+    public static Vector2 ProjectVec3DownZ(Vector3 v)
+    {
+        return new Vector2(v.x, v.y);
+    }
+
     public static Vector2 ProjectVec3DownY(Vector3 v)
     {
         return new Vector2(v.x, v.z);

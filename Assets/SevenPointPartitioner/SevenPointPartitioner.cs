@@ -6,7 +6,6 @@ using UnityEngine.EventSystems;
 public enum SevenPointPartitionerPartType
 {
     Point = 0,
-    Line,
 }
 
 /// <summary>
@@ -34,15 +33,12 @@ public class SevenPointPartitioner : MonoBehaviour
 {
     public List<Point> points;
     public GameObject linePrefab;  // Prefab for a half line
-    readonly float lineVisibleThickness = 0.1f;
-    readonly float lineColliderThicknessSize = 10f;
+    public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f; // Base collider thickness for points
-    readonly float baseLineColliderThickness = 0.1f; // Base collider thickness for lines
 
-    private Line[] lines;
+    public List<Line> lines;
 
     private Point closestPoint;
-    private Line closestLine;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
     private bool isDragging = false; // Flag to indicate if dragging is in progress
     private bool isCameraDragging = false; // Flag to indicate if camera dragging is in progress
@@ -50,7 +46,7 @@ public class SevenPointPartitioner : MonoBehaviour
     private Vector3 lastMousePosition; // To store the last mouse position for camera dragging
 
     float pointColliderThickness; // In fact isn't the collider thickness but that's how it appears provided it's smaller than the true collider thickness.
-    float lineColliderThickness;
+
     private void Awake()
     {
         if (points == null || points.Count != 7)
@@ -64,32 +60,15 @@ public class SevenPointPartitioner : MonoBehaviour
             point.parentSevenPointPartitioner = this;
         }
 
-        // Initialize lines arrays
-        lines = new Line[points.Count * 2];
-
-        // Create Line objects
-        for (int i = 0; i < points.Count; i++)
+        if (lines == null || lines.Count != 3)
         {
-            // Create half lines
-            GameObject lineObj1 = Instantiate(linePrefab, transform);
-            GameObject lineObj2 = Instantiate(linePrefab, transform);
-            lines[i * 2] = lineObj1.GetComponent<Line>();
-            lines[i * 2 + 1] = lineObj2.GetComponent<Line>();
+            Debug.LogError("3 points are required.");
+            return;
+        }
 
-            // Assign DraggableLine components and their references
-            Line line1 = lineObj1.GetComponent<Line>();
-            Line line2 = lineObj2.GetComponent<Line>();
-
-            // Ensure half lines are created properly with the necessary components
-            if (line1 != null && line2 != null)
-            {
-                line1.Initialize(this, points[i], points[Maths.mod(i + 1, points.Count)], points[Maths.mod(i + 2, points.Count)], points[Maths.mod(i + 3, points.Count)]);
-                line2.Initialize(this, points[i], points[Maths.mod(i - 1, points.Count)], points[Maths.mod(i - 2, points.Count)], points[Maths.mod(i - 3, points.Count)]);
-            }
-            else
-            {
-                Debug.LogError("DraggableLine component missing on half line prefab.");
-            }
+        foreach (var line in lines)
+        {
+            line.parentSevenPointPartitioner = this;
         }
 
         UpdateLines();
@@ -98,34 +77,9 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public void UpdateLines()
     {
-        if (points == null || points.Count < 2) return;
-
-        for (int i = 0; i < points.Count; i++)
+        foreach (var line in lines)
         {
-            int nextIndex = (i + 1) % points.Count;
-            int prevIndex = (i - 1 + points.Count) % points.Count;
-            Transform currentPoint = points[i].transform;
-            Transform nextPoint = points[nextIndex].transform;
-            Transform prevPoint = points[prevIndex].transform;
-
-            // Calculate the position and scale for the full line
-            Vector3 direction = nextPoint.position - currentPoint.position;
-
-            // Calculate and update half line positions, rotations, and scales
-            Vector3 nextDirection = (nextPoint.position - currentPoint.position) / 2;
-            Vector3 prevDirection = (prevPoint.position - currentPoint.position) / 2;
-            float nextHalfDistance = nextDirection.magnitude;
-            float prevHalfDistance = prevDirection.magnitude;
-
-            lines[i * 2].transform.position = currentPoint.position;
-            lines[i * 2].transform.right = nextDirection;
-            lines[i * 2].transform.localScale = new Vector3(nextHalfDistance, lineVisibleThickness, 1);
-            lines[i * 2].GetComponent<BoxCollider2D>().size = new Vector2(1, lineColliderThicknessSize);
-
-            lines[i * 2 + 1].transform.position = currentPoint.position;
-            lines[i * 2 + 1].transform.right = prevDirection;
-            lines[i * 2 + 1].transform.localScale = new Vector3(prevHalfDistance, lineVisibleThickness, 1);
-            lines[i * 2 + 1].GetComponent<BoxCollider2D>().size = new Vector2(1, lineColliderThicknessSize);
+            //
         }
     }
 
@@ -158,7 +112,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public (Line closestLine, float closestDistance)? FindClosestLine(Vector3 inputPosition)
     {
-        Edge3D[] edges = lines.Select(line => new Edge3D("", line.pivotPoint.transform.position, (line.pivotPoint.transform.position + line.adjacentPoint.transform.position) / 2)).ToArray();
+        Edge3D[] edges = lines.Select(line => new Edge3D("", line.endPoint1.position, line.endPoint2.position)).ToArray();
 
         // Check _EDGES_ for nearest point
         Vector3 nearestPointOnEdge = Vector3.zero;
@@ -219,16 +173,6 @@ public class SevenPointPartitioner : MonoBehaviour
         }
     }
 
-    // This update function could be made to calculate less often.
-    Vector3 pivotBeforeDrag = Vector3.zero;
-    Vector3 adjBeforeDrag = Vector3.zero;
-    Vector3 altBeforeDrag = Vector3.zero;
-    Vector3 oppBeforeDrag = Vector3.zero;
-    float pivotToAdjDist;
-    float adjToOppDist;
-    float oppToAltDist;
-    float altToPivotDist;
-
     float scrollAmount = 0f;
     private void Update()
     {
@@ -242,21 +186,10 @@ public class SevenPointPartitioner : MonoBehaviour
         if (closestPointDistance < pointColliderThickness)
         {
             closestPoint = closestPointData.closestPoint;
-            closestLine = null;
         }
         else
         {
-            var closestLineData = FindClosestLine(pointerPos);
-            if (closestLineData.HasValue && closestLineData.Value.closestDistance <= lineColliderThickness)
-            {
-                closestPoint = null;
-                closestLine = closestLineData.Value.closestLine;
-            }
-            else
-            {
-                closestPoint = null;
-                closestLine = null;
-            }
+            closestPoint = null;
         }
 
         float scrollInput = Input.GetAxis("Mouse ScrollWheel");
@@ -271,7 +204,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Handle camera dragging
-        if (Input.GetMouseButtonDown(0) && closestPoint == null && closestLine == null)
+        if (Input.GetMouseButtonDown(0) && closestPoint == null)
         {
             isCameraDragging = true;
             lastMousePosition = Input.mousePosition;
@@ -294,31 +227,11 @@ public class SevenPointPartitioner : MonoBehaviour
         {
             point.Highlight(false);
         }
-        foreach (Line line in lines)
-        {
-            line.Highlight(false);
-        }
 
         // Set latest closest highlight
         if (closestPoint != null)
         {
             closestPoint.Highlight(true);
-        }
-
-        if (closestLine != null)
-        {
-            closestLine.Highlight(true);
-
-            pivotBeforeDrag = closestLine.pivotPoint.transform.position;
-            adjBeforeDrag = closestLine.adjacentPoint.transform.position;
-            altBeforeDrag = closestLine.alternativeAdjacentPoint.transform.position;
-            oppBeforeDrag = closestLine.oppositePoint.transform.position;
-
-            // Calculate angle ranges to display to user
-            pivotToAdjDist = (adjBeforeDrag - pivotBeforeDrag).magnitude;
-            adjToOppDist = (oppBeforeDrag - adjBeforeDrag).magnitude;
-            oppToAltDist = (altBeforeDrag - oppBeforeDrag).magnitude;
-            altToPivotDist = (pivotBeforeDrag - altBeforeDrag).magnitude;
         }
     }
 
@@ -330,11 +243,6 @@ public class SevenPointPartitioner : MonoBehaviour
             latestDraggedPartType = SevenPointPartitionerPartType.Point;
             OnBeginDragPoint(eventData);
         }
-        else if (closestLine != null)
-        {
-            latestDraggedPartType = SevenPointPartitionerPartType.Line;
-            OnBeginDragLine(eventData);
-        }
     }
 
     public void OnDrag(PointerEventData eventData)
@@ -342,10 +250,6 @@ public class SevenPointPartitioner : MonoBehaviour
         if (latestDraggedPartType == SevenPointPartitionerPartType.Point)
         {
             OnDragPoint(eventData);
-        }
-        else
-        {
-            OnDragLine(eventData);
         }
     }
 
@@ -355,10 +259,6 @@ public class SevenPointPartitioner : MonoBehaviour
         if (latestDraggedPartType == SevenPointPartitionerPartType.Point)
         {
             OnEndDragPoint(eventData);
-        }
-        else
-        {
-            OnEndDragLine(eventData);
         }
     }
 
@@ -386,12 +286,6 @@ public class SevenPointPartitioner : MonoBehaviour
         closestPoint = null;
     }
 
-    public void OnBeginDragLine(PointerEventData eventData)
-    {
-        lastAdj = adjBeforeDrag;
-        lastOpp = oppBeforeDrag;
-    }
-
     public (bool solutionsExist, Vector3 oppPosition1, Vector3 oppPosition2) GetPossibleOppPositions(float adjTargetToAltDist, float minDistViaOpp, float maxDistViaOpp, float oppToAltDist, float adjToOppDist, Vector3 adjTarget, Vector3 adjTargetToAlt)
     {
         bool solutionsExist = adjTargetToAltDist >= minDistViaOpp && adjTargetToAltDist <= maxDistViaOpp;
@@ -415,58 +309,6 @@ public class SevenPointPartitioner : MonoBehaviour
         return (solutionsExist: solutionsExist, oppPosition1: oppTarget_1, oppPosition2: oppTarget_2);
     }
 
-    Vector3 lastAdj = Vector3.zero;
-    Vector3 lastOpp = Vector3.zero;
-    public void OnDragLine(PointerEventData eventData)
-    {
-        if (closestLine != null)
-        {
-            // Calculate new SevenPointPartitioner position
-            // First calculate possible positions for opposite point
-            float minDistViaOpp = Mathf.Abs(adjToOppDist - oppToAltDist);
-            float maxDistViaOpp = adjToOppDist + oppToAltDist;
-            Vector3 worldPoint = ScreenToWorldPoint(eventData.position);
-            worldPoint.z = 0; // Ensure the point stays on the z = 0 plane
-            Vector3 direction = (worldPoint - closestLine.pivotPoint.transform.position).normalized;
-            Vector3 adjTarget = pivotBeforeDrag + direction * Vector3.Distance(pivotBeforeDrag, adjBeforeDrag);
-            Vector3 adjTargetToAlt = altBeforeDrag - adjTarget;
-            float adjTargetToAltDist = adjTargetToAlt.magnitude;
-            var (solutionsExist, oppTarget_1, oppTarget_2) = GetPossibleOppPositions(adjTargetToAltDist, minDistViaOpp, maxDistViaOpp, oppToAltDist, adjToOppDist, adjTarget, adjTargetToAlt);
-
-            // If solutions don't exist then show SevenPointPartitioner before dragging
-            // If solutions do exist, pick one closest to previously calculated for continuity of motion
-            Vector3 newOpp;
-            if (!solutionsExist)
-            {
-                adjTarget = lastAdj;
-                newOpp = lastOpp;
-            }
-            else
-            {
-                newOpp = oppTarget_1;
-
-                float oppTarget_1_distFromLast = (oppTarget_1 - lastOpp).magnitude;
-                float oppTarget_2_distFromLast = (oppTarget_2 - lastOpp).magnitude;
-                if (oppTarget_2_distFromLast <= oppTarget_1_distFromLast)
-                {
-                    newOpp = oppTarget_2;
-                }
-            }
-
-            lastAdj = adjTarget;
-            lastOpp = newOpp;
-            closestLine.adjacentPoint.transform.position = adjTarget;
-            closestLine.oppositePoint.transform.position = newOpp;
-            UpdateLines();
-        }
-    }
-
-    public void OnEndDragLine(PointerEventData eventData)
-    {
-        // Optional: Handle end drag logic if needed
-        closestLine = null;
-    }
-
     private Vector3 ScreenToWorldPoint(Vector2 screenPosition)
     {
         Vector3 screenPoint = new Vector3(screenPosition.x, screenPosition.y, -Camera.main.transform.position.z);
@@ -477,15 +319,6 @@ public class SevenPointPartitioner : MonoBehaviour
     {
         latestDraggedPartType = partType;
         isDragging = true;
-
-        pivotBeforeDrag = closestLine.pivotPoint.transform.position;
-        adjBeforeDrag = closestLine.adjacentPoint.transform.position;
-        altBeforeDrag = closestLine.alternativeAdjacentPoint.transform.position;
-        oppBeforeDrag = closestLine.oppositePoint.transform.position;
-        pivotToAdjDist = Vector3.Distance(pivotBeforeDrag, adjBeforeDrag);
-        adjToOppDist = Vector3.Distance(adjBeforeDrag, oppBeforeDrag);
-        oppToAltDist = Vector3.Distance(altBeforeDrag, oppBeforeDrag);
-        altToPivotDist = Vector3.Distance(altBeforeDrag, pivotBeforeDrag);
     }
 
     public void StopDragging()
@@ -493,18 +326,9 @@ public class SevenPointPartitioner : MonoBehaviour
         isDragging = false;
     }
 
-    public void RestorePointsToBeforeDrag()
-    {
-        closestLine.pivotPoint.transform.position = pivotBeforeDrag;
-        closestLine.adjacentPoint.transform.position = adjBeforeDrag;
-        closestLine.alternativeAdjacentPoint.transform.position = altBeforeDrag;
-        closestLine.oppositePoint.transform.position = oppBeforeDrag;
-    }
-
     private void UpdateSelectionRadius()
     {
         float zoomFactor = Camera.main.orthographicSize;
         pointColliderThickness = basePointColliderThickness * zoomFactor;
-        lineColliderThickness = baseLineColliderThickness * zoomFactor;
     }
 }

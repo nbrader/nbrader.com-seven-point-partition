@@ -1,44 +1,38 @@
+using System.Net;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
-public class Line : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler
+public class Line : MonoBehaviour
 {
     [HideInInspector]
     public SevenPointPartitioner parentSevenPointPartitioner;
     public SpriteRenderer spriteRenderer;
 
-    public void OnBeginDrag(PointerEventData eventData)
+    public Transform lineTransform;
+
+    public Transform inputPoint1;
+    public Transform inputPoint2;
+
+    public Transform endPoint1;
+    public Transform endPoint2;
+
+    public Color colour;
+
+    public bool IsVisible
     {
-        parentSevenPointPartitioner.OnBeginDrag(eventData);
+        get { return lineTransform.gameObject.activeInHierarchy; }
+        set { lineTransform.gameObject.SetActive(value); }
     }
 
-    public void OnDrag(PointerEventData eventData)
+    private void Update()
     {
-        parentSevenPointPartitioner.OnDrag(eventData);
-    }
+        Vector2 disp = Maths.ProjectVec3DownZ(endPoint2.position - endPoint1.position);
+        float degrees = Maths.Rad2Deg(Maths.AngleFromVec2(disp));
+        float dist = disp.magnitude;
 
-    public void OnEndDrag(PointerEventData eventData)
-    {
-        parentSevenPointPartitioner.OnEndDrag(eventData);
-    }
+        lineTransform.position = endPoint1.position;
+        lineTransform.rotation = Quaternion.Euler(0f, 0f, degrees);
+        lineTransform.transform.localScale = new Vector3(dist, SevenPointPartitioner.lineVisibleThickness, 1);
 
-    public void Initialize(SevenPointPartitioner parentSevenPointPartitioner, Point pivotPoint, Point adjacentPoint, Point oppositePoint, Point alternativeAdjacentPoint)
-    {
-        this.parentSevenPointPartitioner = parentSevenPointPartitioner;
-        this.pivotPoint = pivotPoint;
-        this.adjacentPoint = adjacentPoint;
-        this.oppositePoint = oppositePoint;
-        this.alternativeAdjacentPoint = alternativeAdjacentPoint;
-
-        Highlight(false);
-    }
-
-    public Point pivotPoint; // The pivot point
-    public Point adjacentPoint; // The point adjacent to the pivot on the other end of the line
-    public Point oppositePoint; // The point adjacent to the pivot on the other end of the line
-    public Point alternativeAdjacentPoint; // The point adjacent to the pivot on the other end of the line
-    public void Highlight(bool isHighlight)
-    {
-        spriteRenderer.color = isHighlight ? Color.yellow : Color.blue;
+        spriteRenderer.color = colour;
     }
 }
