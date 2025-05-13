@@ -43,12 +43,12 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public void UpdateLines()
     {
-        lines[0].endPoint1.position = points[0].transform.position;
-        lines[0].endPoint2.position = points[1].transform.position;
-        lines[1].endPoint1.position = points[2].transform.position;
-        lines[1].endPoint2.position = points[3].transform.position;
-        lines[2].endPoint1.position = points[4].transform.position;
-        lines[2].endPoint2.position = points[5].transform.position;
+        lines[0].inputPoint1.position = points[0].transform.position;
+        lines[0].inputPoint2.position = points[1].transform.position;
+        lines[1].inputPoint1.position = points[2].transform.position;
+        lines[1].inputPoint2.position = points[3].transform.position;
+        lines[2].inputPoint1.position = points[4].transform.position;
+        lines[2].inputPoint2.position = points[5].transform.position;
     }
 
     public void MovePoint(Point point, Vector3 position)
@@ -252,29 +252,6 @@ public class SevenPointPartitioner : MonoBehaviour
     {
         // Optional: Handle end drag logic if needed
         closestPoint = null;
-    }
-
-    public (bool solutionsExist, Vector3 oppPosition1, Vector3 oppPosition2) GetPossibleOppPositions(float adjTargetToAltDist, float minDistViaOpp, float maxDistViaOpp, float oppToAltDist, float adjToOppDist, Vector3 adjTarget, Vector3 adjTargetToAlt)
-    {
-        bool solutionsExist = adjTargetToAltDist >= minDistViaOpp && adjTargetToAltDist <= maxDistViaOpp;
-
-        Vector3 oppTarget_1 = Vector3.zero;
-        Vector3 oppTarget_2 = Vector3.zero;
-        if (solutionsExist)
-        {
-            var intersectionData = Maths.CircleCircleIntersectionXAndY(adjTargetToAltDist, oppToAltDist, adjToOppDist);
-
-            float x = intersectionData.IntersectionDistanceFromOriginAlongLineConnectingOrigins;
-            float y = intersectionData.HalfSeparationOfIntersections;
-            oppTarget_1 = adjTarget
-                          + adjTargetToAlt.normalized * x
-                          + new Vector3(-adjTargetToAlt.normalized.y, adjTargetToAlt.normalized.x, 0f) * y;
-            oppTarget_2 = adjTarget
-                          + adjTargetToAlt.normalized * x
-                          - new Vector3(-adjTargetToAlt.normalized.y, adjTargetToAlt.normalized.x, 0f) * y;
-        }
-
-        return (solutionsExist: solutionsExist, oppPosition1: oppTarget_1, oppPosition2: oppTarget_2);
     }
 
     private Vector3 ScreenToWorldPoint(Vector2 screenPosition)
