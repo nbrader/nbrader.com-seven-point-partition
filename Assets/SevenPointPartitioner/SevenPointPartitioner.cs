@@ -8,44 +8,22 @@ public enum SevenPointPartitionerPartType
     Point = 0,
 }
 
-/// <summary>
-/// There is at most 1 point out of a pair of opposing points which has angle which would break the
-/// constraint of being less than min distance imposed by the opposing lines and similarly for being
-/// more than max distance imposed by the opposing lines.
-/// 
-/// Proof sketch:
-/// For one, a pair of adjacent lines has a sum of lengths either less than, equal to or more than that
-/// of the opposing pair of lines and in each of those cases the opposing lines therefore have a sum of
-/// lengths that is more than, equal to or less than the first pair respectively.
-/// 
-/// Also, when an adjacent pair of lines are at a limit of an angular range, this can only
-/// be because the other pair have reached a minim or maximum, which occur when they are collinear.
-/// The fact that they've reached a collinear positioned demonstrates that they didn't themselves have an
-/// angular restriction there and may pass through continuously the other half of their angular range.
-/// 
-/// Conversely, any point which allows a collinear angle is hitting a minimum or maximum distance of
-/// endpoints and so if the opposing point isn't also hitting a collinear angle when the first point
-/// does, then it won't for any angle because other angles can only result in less extreme distances
-/// of endpoints and therefore there will be a (possibly zero) range of no solutions for the other
-/// point beyond the angle it reached at that extreme.
-/// </summary>
 public class SevenPointPartitioner : MonoBehaviour
 {
     public List<Point> points;
-    public GameObject linePrefab;  // Prefab for a half line
+    public GameObject linePrefab;
     public static readonly float lineVisibleThickness = 0.1f;
-    readonly float basePointColliderThickness = 0.1f; // Base collider thickness for points
+    readonly float basePointColliderThickness = 0.1f;
+    float pointColliderThickness;
 
     public List<Line> lines;
 
     private Point closestPoint;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
-    private bool isDragging = false; // Flag to indicate if dragging is in progress
-    private bool isCameraDragging = false; // Flag to indicate if camera dragging is in progress
+    private bool isDragging = false;
+    private bool isCameraDragging = false;
 
-    private Vector3 lastMousePosition; // To store the last mouse position for camera dragging
-
-    float pointColliderThickness; // In fact isn't the collider thickness but that's how it appears provided it's smaller than the true collider thickness.
+    private Vector3 lastMousePosition;
 
     private void Awake()
     {
