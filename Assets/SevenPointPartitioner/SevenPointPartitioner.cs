@@ -17,6 +17,7 @@ public class SevenPointPartitioner : MonoBehaviour
     float pointColliderThickness;
 
     public List<Line> lines;
+    public List<Line> debugLines;
 
     private Point closestPoint;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
@@ -43,12 +44,25 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public void UpdateLines()
     {
-        lines[0].inputPoint1.position = points[0].transform.position;
-        lines[0].inputPoint2.position = points[1].transform.position;
-        lines[1].inputPoint1.position = points[2].transform.position;
-        lines[1].inputPoint2.position = points[3].transform.position;
-        lines[2].inputPoint1.position = points[4].transform.position;
-        lines[2].inputPoint2.position = points[5].transform.position;
+        lines[0].inputPoint1.position = points[7].transform.position;
+        lines[0].inputPoint2.position = points[8].transform.position;
+        lines[1].inputPoint1.position = points[9].transform.position;
+        lines[1].inputPoint2.position = points[10].transform.position;
+        lines[2].inputPoint1.position = points[11].transform.position;
+        lines[2].inputPoint2.position = points[12].transform.position;
+
+        debugLines[0].inputPoint1.position = points[0].transform.position;
+        debugLines[1].inputPoint1.position = points[0].transform.position;
+        debugLines[2].inputPoint1.position = points[0].transform.position;
+        debugLines[3].inputPoint1.position = points[0].transform.position;
+        debugLines[4].inputPoint1.position = points[0].transform.position;
+        debugLines[5].inputPoint1.position = points[0].transform.position;
+        debugLines[0].inputPoint2.position = points[1].transform.position;
+        debugLines[1].inputPoint2.position = points[2].transform.position;
+        debugLines[2].inputPoint2.position = points[3].transform.position;
+        debugLines[3].inputPoint2.position = points[4].transform.position;
+        debugLines[4].inputPoint2.position = points[5].transform.position;
+        debugLines[5].inputPoint2.position = points[6].transform.position;
     }
 
     public void MovePoint(Point point, Vector3 position)
