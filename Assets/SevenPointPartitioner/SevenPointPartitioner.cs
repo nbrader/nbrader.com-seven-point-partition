@@ -65,6 +65,44 @@ public class SevenPointPartitioner : MonoBehaviour
         //debugLines[5].inputPoint2.position = points[6].transform.position;
     }
 
+    private void CheckForPossibleCentres()
+    {
+        List<int> sortedIndices = Enumerable.Range(0, points.Count).ToList();
+
+        // Sort indices by Y descending, then X ascending, then Z ascending
+        sortedIndices.Sort((i, j) =>
+        {
+            Vector3 posA = points[i].Position;
+            Vector3 posB = points[j].Position;
+
+            if (!Mathf.Approximately(posA.y, posB.y))
+                return posB.y.CompareTo(posA.y); // Descending Y
+
+            if (!Mathf.Approximately(posA.x, posB.x))
+                return posA.x.CompareTo(posB.x); // Ascending X
+
+            return posA.z.CompareTo(posB.z); // Ascending Z
+        });
+
+        List<int> validCentreIndices = new List<int>();
+
+        foreach (int index in sortedIndices)
+        {
+            if (CanBeCentre(index))
+            {
+                validCentreIndices.Add(index);
+            }
+        }
+
+        Debug.Log("Possible centres: " + string.Join(", ", validCentreIndices));
+    }
+
+    private bool CanBeCentre(int pointIndex)
+    {
+        // TODO: Replace with actual logic
+        return true;
+    }
+
     public void MovePoint(int pointIndex, Vector3 targetPosition)
     {
         Vector3 corrected = ResolveConstraints(pointIndex, targetPosition);
@@ -218,6 +256,8 @@ public class SevenPointPartitioner : MonoBehaviour
     float scrollAmount = 0f;
     private void Update()
     {
+        CheckForPossibleCentres();
+
         if (isDragging) return;
 
         var pointerPos = Camera.main.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
