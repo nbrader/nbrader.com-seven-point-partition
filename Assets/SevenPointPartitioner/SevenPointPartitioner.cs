@@ -19,7 +19,7 @@ public class SevenPointPartitioner : MonoBehaviour
     public List<Line> lines;
     public List<Line> debugLines;
 
-    private Point closestPoint;
+    private int? closestPointIndex;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
     private bool isDragging = false;
     private bool isCameraDragging = false;
@@ -44,48 +44,108 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public void UpdateLines()
     {
-        lines[0].inputPoint1.position = points[7].transform.position;
-        lines[0].inputPoint2.position = points[8].transform.position;
-        lines[1].inputPoint1.position = points[9].transform.position;
-        lines[1].inputPoint2.position = points[10].transform.position;
-        lines[2].inputPoint1.position = points[11].transform.position;
-        lines[2].inputPoint2.position = points[12].transform.position;
+        //lines[0].inputPoint1.position = points[7].transform.position;
+        //lines[0].inputPoint2.position = points[8].transform.position;
+        //lines[1].inputPoint1.position = points[9].transform.position;
+        //lines[1].inputPoint2.position = points[10].transform.position;
+        //lines[2].inputPoint1.position = points[11].transform.position;
+        //lines[2].inputPoint2.position = points[12].transform.position;
 
-        debugLines[0].inputPoint1.position = points[0].transform.position;
-        debugLines[1].inputPoint1.position = points[0].transform.position;
-        debugLines[2].inputPoint1.position = points[0].transform.position;
-        debugLines[3].inputPoint1.position = points[0].transform.position;
-        debugLines[4].inputPoint1.position = points[0].transform.position;
-        debugLines[5].inputPoint1.position = points[0].transform.position;
-        debugLines[0].inputPoint2.position = points[1].transform.position;
-        debugLines[1].inputPoint2.position = points[2].transform.position;
-        debugLines[2].inputPoint2.position = points[3].transform.position;
-        debugLines[3].inputPoint2.position = points[4].transform.position;
-        debugLines[4].inputPoint2.position = points[5].transform.position;
-        debugLines[5].inputPoint2.position = points[6].transform.position;
+        //debugLines[0].inputPoint1.position = points[0].transform.position;
+        //debugLines[1].inputPoint1.position = points[0].transform.position;
+        //debugLines[2].inputPoint1.position = points[0].transform.position;
+        //debugLines[3].inputPoint1.position = points[0].transform.position;
+        //debugLines[4].inputPoint1.position = points[0].transform.position;
+        //debugLines[5].inputPoint1.position = points[0].transform.position;
+        //debugLines[0].inputPoint2.position = points[1].transform.position;
+        //debugLines[1].inputPoint2.position = points[2].transform.position;
+        //debugLines[2].inputPoint2.position = points[3].transform.position;
+        //debugLines[3].inputPoint2.position = points[4].transform.position;
+        //debugLines[4].inputPoint2.position = points[5].transform.position;
+        //debugLines[5].inputPoint2.position = points[6].transform.position;
     }
 
-    public void MovePoint(Point point, Vector3 position)
+    public void MovePoint(int pointIndex, Vector3 targetPosition)
     {
-        if (point != null)
+        Vector3 corrected = ResolveConstraints(pointIndex, targetPosition);
+        points[pointIndex].Position = corrected;
+        UpdateLines();
+    }
+
+    private Vector3 ResolveConstraints(int movingIndex, Vector3 target)
+    {
+        const float a = 0.05f;     // initial radius
+        const float b = 0.25f;     // exponential growth rate
+        const float angleStep = 0.1f;
+
+        // First attempt: use target directly
+        if (!HitsAnyLine(movingIndex, target))
+            return target;
+
+        int i = 0;
+        while (true)
         {
-            point.transform.position = position;
-            UpdateLines();
+            float angle = i * angleStep;
+            float r = a * Mathf.Exp(b * angle);
+            float xOffset = r * Mathf.Cos(angle);
+            float zOffset = r * Mathf.Sin(angle);
+
+            Vector3 attempt = new Vector3(target.x + xOffset, target.y, target.z + zOffset);
+
+            if (!HitsAnyLine(movingIndex, attempt))
+                return attempt;
+
+            i++;
         }
     }
 
-    public (Point closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
+    private bool HitsAnyLine(int movingIndex, Vector3 position)
     {
-        Point closest = null;
-        float minDistance = float.MaxValue;
-
-        foreach (Point point in points)
+        for (int i = 0; i < points.Count; i++)
         {
+            if (i == movingIndex) continue;
+            Vector3 pi = points[i].Position;
+
+            // Check vertical line: same x and z
+            if (Mathf.Approximately(position.x, pi.x) &&
+                Mathf.Approximately(position.z, pi.z))
+                return true;
+
+            for (int j = i + 1; j < points.Count; j++)
+            {
+                if (j == movingIndex) continue;
+                Vector3 pj = points[j].Position;
+
+                if (IsOnLine(pi, pj, position))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsOnLine(Vector3 a, Vector3 b, Vector3 p)
+    {
+        Vector3 ab = b - a;
+        Vector3 ap = p - a;
+        Vector3 cross = Vector3.Cross(ab, ap);
+        return cross.sqrMagnitude < 1e-8f;
+    }
+
+    public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
+    {
+        Point point = points[0];
+        float minDistance = Vector3.Distance(position, point.transform.position);
+        int closest = 0;
+
+        for (int i = 1; i < points.Count; i++)
+        {
+            point = points[i];
             float distance = Vector3.Distance(position, point.transform.position);
             if (distance < minDistance)
             {
                 minDistance = distance;
-                closest = point;
+                closest = i;
             }
         }
 
@@ -167,11 +227,11 @@ public class SevenPointPartitioner : MonoBehaviour
 
         if (closestPointDistance < pointColliderThickness)
         {
-            closestPoint = closestPointData.closestPoint;
+            closestPointIndex = closestPointData.closestPoint;
         }
         else
         {
-            closestPoint = null;
+            closestPointIndex = null;
         }
 
         float scrollInput = Input.GetAxis("Mouse ScrollWheel");
@@ -186,7 +246,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Handle camera dragging
-        if (Input.GetMouseButtonDown(0) && closestPoint == null)
+        if (Input.GetMouseButtonDown(0) && closestPointIndex == null)
         {
             isCameraDragging = true;
             lastMousePosition = Input.mousePosition;
@@ -211,16 +271,16 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Set latest closest highlight
-        if (closestPoint != null)
+        if (closestPointIndex != null)
         {
-            closestPoint.Highlight(true);
+            points[closestPointIndex.Value].Highlight(true);
         }
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
         isDragging = true; // Set the dragging flag to true
-        if (closestPoint != null)
+        if (closestPointIndex != null)
         {
             latestDraggedPartType = SevenPointPartitionerPartType.Point;
             OnBeginDragPoint(eventData);
@@ -251,21 +311,21 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public void OnDragPoint(PointerEventData eventData)
     {
-        if (closestPoint != null)
+        if (closestPointIndex != null)
         {
             // Convert screen position to world position
             Vector3 worldPoint = ScreenToWorldPoint(eventData.position);
             worldPoint.z = 0; // Ensure the point stays on the z = 0 plane
 
             // Move the point via the SevenPointPartitionerManager
-            MovePoint(closestPoint, worldPoint);
+            MovePoint(closestPointIndex.Value, worldPoint);
         }
     }
 
     public void OnEndDragPoint(PointerEventData eventData)
     {
         // Optional: Handle end drag logic if needed
-        closestPoint = null;
+        closestPointIndex = null;
     }
 
     private Vector3 ScreenToWorldPoint(Vector2 screenPosition)

@@ -7,6 +7,8 @@ public class Point : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHan
     public SevenPointPartitioner parentSevenPointPartitioner;
     public SpriteRenderer spriteRenderer;
 
+    public Vector3 Position { get { return transform.position; } set { transform.position = value; } }
+
     public void OnBeginDrag(PointerEventData eventData)
     {
         parentSevenPointPartitioner.OnBeginDrag(eventData);
