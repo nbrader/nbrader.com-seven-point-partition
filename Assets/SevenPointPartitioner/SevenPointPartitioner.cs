@@ -99,7 +99,50 @@ public class SevenPointPartitioner : MonoBehaviour
 
     private bool CanBeCentre(int pointIndex)
     {
-        // TODO: Replace with actual logic
+        Vector3 candidate = points[pointIndex].Position;
+        List<(float projectedY, bool isLeft)> projections = new List<(float, bool)>();
+
+        for (int i = 0; i < points.Count; i++)
+        {
+            if (i == pointIndex) continue;
+
+            Vector3 other = points[i].Position;
+            Vector3 direction = other - candidate;
+
+            if (Mathf.Equals(direction.x, 0f))
+            {
+                // Line is vertical, parallel to the projection line: skip or use other.y
+                continue;
+            }
+
+            float t = 10f / direction.x; // because we want x = candidate.x + 10
+            float projectedY = candidate.y + direction.y * t;
+            bool isLeft = other.x < candidate.x;
+
+            projections.Add((projectedY, isLeft));
+        }
+
+        // Sort projections by projectedY ascending
+        projections.Sort((a, b) => a.projectedY.CompareTo(b.projectedY));
+
+        int sameSideCount = 1;
+        bool? lastSide = null;
+
+        foreach (var (y, isLeft) in projections)
+        {
+            if (lastSide == null || isLeft != lastSide)
+            {
+                sameSideCount = 1;
+                lastSide = isLeft;
+            }
+            else
+            {
+                sameSideCount++;
+                if (sameSideCount >= 3)
+                    return false;
+            }
+        }
+
         return true;
     }
 
