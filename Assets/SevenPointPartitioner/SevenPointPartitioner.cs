@@ -109,38 +109,48 @@ public class SevenPointPartitioner : MonoBehaviour
             Vector3 other = points[i].Position;
             Vector3 direction = other - candidate;
 
-            if (Mathf.Equals(direction.x, 0f))
-            {
-                // Line is vertical, parallel to the projection line: skip or use other.y
-                continue;
-            }
+            if (Mathf.Approximately(direction.x, 0f))
+                continue; // Skip vertical lines which do not intersect the projection line uniquely
 
-            float t = 10f / direction.x; // because we want x = candidate.x + 10
+            float t = 10f / direction.x; // Projection to x = candidate.x + 10
             float projectedY = candidate.y + direction.y * t;
             bool isLeft = other.x < candidate.x;
 
             projections.Add((projectedY, isLeft));
         }
 
-        // Sort projections by projectedY ascending
+        // Sort by projected Y
         projections.Sort((a, b) => a.projectedY.CompareTo(b.projectedY));
 
-        int sameSideCount = 1;
-        bool? lastSide = null;
+        int count = projections.Count;
 
-        foreach (var (y, isLeft) in projections)
+        // Check for 3 consecutive same-side values (regular)
+        for (int i = 0; i <= count - 3; i++)
         {
-            if (lastSide == null || isLeft != lastSide)
-            {
-                sameSideCount = 1;
-                lastSide = isLeft;
-            }
-            else
-            {
-                sameSideCount++;
-                if (sameSideCount >= 3)
-                    return false;
-            }
+            bool side1 = projections[i].isLeft;
+            bool side2 = projections[i + 1].isLeft;
+            bool side3 = projections[i + 2].isLeft;
+
+            if (side1 == side2 && side2 == side3)
+                return false;
+        }
+
+        // Check wraparound triplets with side flipping
+        if (count >= 3)
+        {
+            // Wrap: last, first, second
+            bool side1 = !projections[count - 1].isLeft; // flipped
+            bool side2 = projections[0].isLeft;
+            bool side3 = projections[1].isLeft;
+            if (side1 == side2 && side2 == side3)
+                return false;
+
+            // Wrap: second-last, last, first
+            side1 = projections[count - 2].isLeft;
+            side2 = projections[count - 1].isLeft;
+            side3 = !projections[0].isLeft; // flipped
+            if (side1 == side2 && side2 == side3)
+                return false;
         }
 
         return true;
