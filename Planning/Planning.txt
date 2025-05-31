@@ -1,2 +1,25 @@
 Enhancements:
-    Created Rocq proof that the algorithm utilised here is guaranteed to find a solutions if one exists.
+    Create Rocq proof that the algorithm utilised here is guaranteed to find a solutions if one exists.
+        The algorithm I had planned does not solve the problem (as I have shown by counter-example).
+
+I'm now thinking I could solve this by something along this reasoning:
+    * ASSUMPTION 1: As before, assume that the 7 points are in "general position" (no 3 points lie on the same line)
+    * LEMMA 0: A set of points where every point is on the convex hull of those points has no solution
+        * SKETCH OF PROOF: The only way to partition 7 points is with one part as a central triangle (As any two non-parallel lines will partition 2D space into the maximum number of subsets any space can be split into by 2 splits (i.e. 4) and the best you can partition with a further line in 2D space is to split 3 of those 4 (as the remaining part will always be on the other side of the intersection of the first two lines). So, to be solvable, there must be an interior point as the central triangular part of the partition is necessarily interior to the convex hull which is at least as big as the convex hull of the "corner" points to this triangle.
+    * LEMMA 1: Every line in a solution must give a 3/4 split.
+        * SKETCH OF PROOF: For the same reason as above: You can't do better than this configuration and that's true for that configuration.
+    * LEMMA 2: Every two splits must give a 1/2/2/2 partition.
+        * SKETCH OF PROOF: For the same reason as above: You can't do better than this configuration and that's true for that configuration.
+    * LEMMA 3: The solution can't have lines that have fewer than 3 point displacements of directions between their directions
+        * SKETCH OF PROOF: For the same reason as above: You can't do better than this configuration and that's true for that configuration.
+    * LEMMA 4: A line of a direction not equal to the direction of the displacement between any two points may always be translated to partition the points to give any desired number of points on each side. In particular, the desired 4/3 split can always be achieved.
+        * SKETCH OF PROOF: Consider that a line may always be translated until all points are on one side of it and that from this point it will encounter each point one at a time as it moved toward the opposite situation (where all points are on the other side) and that each time a point is passed, those points are exchanged in the counts of points on each side.
+    * LEMMA 5: A set of points always has exactly 42 orders that they can be exchanged in by lines as they make the above mentioned translation journey from one extreme to the other and so there are exactly 21 pairs of valid partitions with a 4/3 split (one for 3/4 and one for 4/3).
+        * SKETCH OF PROOF: For every pair of points (7 choose 2) there is a corresponding line which is parallel to the displacement between them and all of these displacements can be ordered according to the angle they make with the some reference direction. (Note: Angles can be kept within a 180 degree range without loss of generality as 180 degree further rotated after being parallel with a given line will again be parallel with that line. This allows us to avoid the issue of angles wrapping around.) Now consider when the partition line is rotated gradually: In any given small motion, it will either change nothing about which points it can partition by translation or it will exchange exactly two consecutive points as the direction of the partition line passes through the direction of the displacement between the points. After 21 exchanges, the order will be the reverse of the original order and the 21 exchanges will visit every reverse order before return to the original.
+
+    * SKETCH OF PROOF OF THEOREM:
+        I can do a quick check with LEMMA 0 to give up early.
+        I think I can safely ignore displacements between points which don't themselves partition the points into 3 and 2 (not counting the points defining the displacement themselves). This is because I will never need to partition near to along the other lines anyway (as they insufficiently partition the points by LEMMA 1).
+        For any given direction not already discarded by LEMMA 1, I can always find potential splits using LEMMA 4.
+        I can discard some of these cases using LEMMA 2 and LEMMA 3.
+        I feel like I can use something from LEMMA 5 to efficiently enumerate the possible unique cases, testing each to see if they're a solution. I might need more LEMMAS to bring down the number of cases to check though.
