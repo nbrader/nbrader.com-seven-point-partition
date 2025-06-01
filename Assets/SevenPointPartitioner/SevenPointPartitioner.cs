@@ -11,12 +11,13 @@ public enum SevenPointPartitionerPartType
 public class SevenPointPartitioner : MonoBehaviour
 {
     public List<Point> points;
+
     public GameObject linePrefab;
     public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f;
     float pointColliderThickness;
 
-    public List<Line> lines;
+    List<Line> lines;
 
     private int? closestPointIndex;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
@@ -25,6 +26,13 @@ public class SevenPointPartitioner : MonoBehaviour
 
     private Vector3 lastMousePosition;
 
+    private List<Point> AllPoints => points
+    .Concat(debugLinePairs.Select(p => p.pointA))
+    .Concat(debugLinePairs.Select(p => p.pointB))
+    .Where(p => p != null)
+    .Distinct()
+    .ToList();
+
     private void Awake()
     {
         foreach (var point in points)
@@ -32,8 +40,72 @@ public class SevenPointPartitioner : MonoBehaviour
             point.parentSevenPointPartitioner = this;
         }
 
+        // Also set the parent for points used only in debugLinePairs
+        foreach (var pair in debugLinePairs)
+        {
+            if (pair.pointA != null && !points.Contains(pair.pointA))
+                pair.pointA.parentSevenPointPartitioner = this;
+
+            if (pair.pointB != null && !points.Contains(pair.pointB))
+                pair.pointB.parentSevenPointPartitioner = this;
+
+            pair.pointA.normalColour = Color.white;
+            pair.pointB.normalColour = Color.white;
+        }
+
         InitializeLinesFromPoints();
+        InitializeDebugLines();
         UpdateSelectionRadius();
+    }
+
+    List<Line> debugLines;
+
+    private static readonly Color[] debugColors = new Color[]
+    {
+    Color.magenta, Color.cyan, Color.yellow,
+    new Color(1f, 0.5f, 0f), // orange
+    new Color(0.5f, 0f, 1f), // violet
+    new Color(0f, 1f, 0.5f), // spring green
+    new Color(0.5f, 1f, 0f), // chartreuse
+    new Color(1f, 0f, 0.5f), // rose
+    new Color(0f, 0.5f, 1f), // azure
+                             // Add more if needed
+    };
+
+    [System.Serializable]
+    public struct PointPair
+    {
+        public Point pointA;
+        public Point pointB;
+    }
+
+    public List<PointPair> debugLinePairs;
+
+    private void InitializeDebugLines()
+    {
+        debugLines = new List<Line>();
+        int colorIndex = 0;
+
+        foreach (var pair in debugLinePairs)
+        {
+            if (pair.pointA == null || pair.pointB == null) continue;
+
+            GameObject lineObj = Instantiate(linePrefab, Vector3.zero, Quaternion.identity);
+            Line line = lineObj.GetComponent<Line>();
+
+            line.inputPoint1 = pair.pointA.transform;
+            line.inputPoint2 = pair.pointB.transform;
+            line.parentSevenPointPartitioner = this;
+
+            Color debugColor = debugColors[colorIndex % debugColors.Length];
+            debugColor.a = 0.9f;
+            line.colour = debugColor;
+            colorIndex++;
+
+            line.ShouldBeVisible += _ => true;
+
+            debugLines.Add(line);
+        }
     }
 
     private void InitializeLinesFromPoints()
@@ -49,11 +121,14 @@ public class SevenPointPartitioner : MonoBehaviour
 
                 line.inputPoint1 = points[i].transform;
                 line.inputPoint2 = points[j].transform;
-                line.colour = Color.green;
-                line.colour.a = 0.5f;
                 line.parentSevenPointPartitioner = this;
 
-                // Register the visibility rule once
+                // Assign debug color
+                Color color = Color.green;
+                color.a = 0.5f;
+                line.colour = color;
+
+                // Register visibility rule
                 line.ShouldBeVisible += ShouldShowLine;
 
                 lines.Add(line);
@@ -88,13 +163,14 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
     {
-        Point point = points[0];
+        List<Point> allPoints = AllPoints;
+        Point point = allPoints[0];
         float minDistance = Vector3.Distance(position, point.transform.position);
         int closest = 0;
 
-        for (int i = 1; i < points.Count; i++)
+        for (int i = 1; i < allPoints.Count; i++)
         {
-            point = points[i];
+            point = allPoints[i];
             float distance = Vector3.Distance(position, point.transform.position);
             if (distance < minDistance)
             {
@@ -106,6 +182,8 @@ public class SevenPointPartitioner : MonoBehaviour
         return (closestPoint: closest, closestDistance: minDistance);
     }
 
+    private int? closestPointIndexInAllPoints;
+
     float scrollAmount = 0f;
     private void Update()
     {
@@ -116,15 +194,15 @@ public class SevenPointPartitioner : MonoBehaviour
         var pointerPos = Camera.main.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
 
         var closestPointData = FindClosestPoint(pointerPos);
-        var closestPointDistance = closestPointData.closestDistance;
+        closestPointIndexInAllPoints = closestPointData.closestPoint;
 
-        if (closestPointDistance < pointColliderThickness)
+        if (closestPointData.closestDistance < pointColliderThickness)
         {
-            closestPointIndex = closestPointData.closestPoint;
+            closestPointIndexInAllPoints = closestPointData.closestPoint;
         }
         else
         {
-            closestPointIndex = null;
+            closestPointIndexInAllPoints = null;
         }
 
         float scrollInput = Input.GetAxis("Mouse ScrollWheel");
@@ -158,16 +236,11 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Reset highlights
-        foreach (Point point in points)
-        {
+        foreach (Point point in AllPoints)
             point.Highlight(false);
-        }
 
-        // Set latest closest highlight
-        if (closestPointIndex != null)
-        {
-            points[closestPointIndex.Value].Highlight(true);
-        }
+        if (closestPointIndexInAllPoints != null)
+            AllPoints[closestPointIndexInAllPoints.Value].Highlight(true);
     }
 
     private bool ShouldShowLine(Line line)
@@ -201,7 +274,7 @@ public class SevenPointPartitioner : MonoBehaviour
     public void OnBeginDrag(PointerEventData eventData)
     {
         isDragging = true; // Set the dragging flag to true
-        if (closestPointIndex != null)
+        if (closestPointIndexInAllPoints != null)
         {
             latestDraggedPartType = SevenPointPartitionerPartType.Point;
             OnBeginDragPoint(eventData);
@@ -232,21 +305,18 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public void OnDragPoint(PointerEventData eventData)
     {
-        if (closestPointIndex != null)
+        if (closestPointIndexInAllPoints != null)
         {
-            // Convert screen position to world position
             Vector3 worldPoint = ScreenToWorldPoint(eventData.position);
-            worldPoint.z = 0; // Ensure the point stays on the z = 0 plane
-
-            // Move the point via the SevenPointPartitionerManager
-            MovePoint(closestPointIndex.Value, worldPoint);
+            worldPoint.z = 0;
+            AllPoints[closestPointIndexInAllPoints.Value].Position = worldPoint;
         }
     }
 
     public void OnEndDragPoint(PointerEventData eventData)
     {
         // Optional: Handle end drag logic if needed
-        closestPointIndex = null;
+        closestPointIndexInAllPoints = null;
     }
 
     private Vector3 ScreenToWorldPoint(Vector2 screenPosition)
