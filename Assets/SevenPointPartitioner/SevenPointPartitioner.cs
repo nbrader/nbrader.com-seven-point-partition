@@ -44,25 +44,25 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public void UpdateLines()
     {
-        //lines[0].inputPoint1.position = points[7].transform.position;
-        //lines[0].inputPoint2.position = points[8].transform.position;
-        //lines[1].inputPoint1.position = points[9].transform.position;
-        //lines[1].inputPoint2.position = points[10].transform.position;
-        //lines[2].inputPoint1.position = points[11].transform.position;
-        //lines[2].inputPoint2.position = points[12].transform.position;
+        lines[0].inputPoint1.position = points[7].transform.position;
+        lines[0].inputPoint2.position = points[8].transform.position;
+        lines[1].inputPoint1.position = points[9].transform.position;
+        lines[1].inputPoint2.position = points[10].transform.position;
+        lines[2].inputPoint1.position = points[11].transform.position;
+        lines[2].inputPoint2.position = points[12].transform.position;
 
-        //debugLines[0].inputPoint1.position = points[0].transform.position;
-        //debugLines[1].inputPoint1.position = points[0].transform.position;
-        //debugLines[2].inputPoint1.position = points[0].transform.position;
-        //debugLines[3].inputPoint1.position = points[0].transform.position;
-        //debugLines[4].inputPoint1.position = points[0].transform.position;
-        //debugLines[5].inputPoint1.position = points[0].transform.position;
-        //debugLines[0].inputPoint2.position = points[1].transform.position;
-        //debugLines[1].inputPoint2.position = points[2].transform.position;
-        //debugLines[2].inputPoint2.position = points[3].transform.position;
-        //debugLines[3].inputPoint2.position = points[4].transform.position;
-        //debugLines[4].inputPoint2.position = points[5].transform.position;
-        //debugLines[5].inputPoint2.position = points[6].transform.position;
+        debugLines[0].inputPoint1.position = points[0].transform.position;
+        debugLines[1].inputPoint1.position = points[0].transform.position;
+        debugLines[2].inputPoint1.position = points[0].transform.position;
+        debugLines[3].inputPoint1.position = points[0].transform.position;
+        debugLines[4].inputPoint1.position = points[0].transform.position;
+        debugLines[5].inputPoint1.position = points[0].transform.position;
+        debugLines[0].inputPoint2.position = points[1].transform.position;
+        debugLines[1].inputPoint2.position = points[2].transform.position;
+        debugLines[2].inputPoint2.position = points[3].transform.position;
+        debugLines[3].inputPoint2.position = points[4].transform.position;
+        debugLines[4].inputPoint2.position = points[5].transform.position;
+        debugLines[5].inputPoint2.position = points[6].transform.position;
     }
 
     private void CheckForPossibleCentres()
@@ -84,77 +84,77 @@ public class SevenPointPartitioner : MonoBehaviour
             return posA.z.CompareTo(posB.z); // Ascending Z
         });
 
-        List<int> validCentreIndices = new List<int>();
+        //List<int> validCentreIndices = new List<int>();
 
-        foreach (int index in sortedIndices)
-        {
-            if (CanBeCentre(index))
-            {
-                validCentreIndices.Add(index);
-            }
-        }
+        //foreach (int index in sortedIndices)
+        //{
+        //    if (CanBeCentre(index))
+        //    {
+        //        validCentreIndices.Add(index);
+        //    }
+        //}
 
-        Debug.Log("Possible centres: " + string.Join(", ", validCentreIndices));
+        //Debug.Log("Possible centres: " + string.Join(", ", validCentreIndices));
     }
 
-    private bool CanBeCentre(int pointIndex)
-    {
-        Vector3 candidate = points[pointIndex].Position;
-        List<(float projectedY, bool isLeft)> projections = new List<(float, bool)>();
+    //private bool CanBeCentre(int pointIndex)
+    //{
+    //    Vector3 candidate = points[pointIndex].Position;
+    //    List<(float projectedY, bool isLeft)> projections = new List<(float, bool)>();
 
-        for (int i = 0; i < points.Count; i++)
-        {
-            if (i == pointIndex) continue;
+    //    for (int i = 0; i < points.Count; i++)
+    //    {
+    //        if (i == pointIndex) continue;
 
-            Vector3 other = points[i].Position;
-            Vector3 direction = other - candidate;
+    //        Vector3 other = points[i].Position;
+    //        Vector3 direction = other - candidate;
 
-            if (Mathf.Approximately(direction.x, 0f))
-                continue; // Skip vertical lines which do not intersect the projection line uniquely
+    //        if (Mathf.Approximately(direction.x, 0f))
+    //            continue; // Skip vertical lines which do not intersect the projection line uniquely
 
-            float t = 10f / direction.x; // Projection to x = candidate.x + 10
-            float projectedY = candidate.y + direction.y * t;
-            bool isLeft = other.x < candidate.x;
+    //        float t = 10f / direction.x; // Projection to x = candidate.x + 10
+    //        float projectedY = candidate.y + direction.y * t;
+    //        bool isLeft = other.x < candidate.x;
 
-            projections.Add((projectedY, isLeft));
-        }
+    //        projections.Add((projectedY, isLeft));
+    //    }
 
-        // Sort by projected Y
-        projections.Sort((a, b) => a.projectedY.CompareTo(b.projectedY));
+    //    // Sort by projected Y
+    //    projections.Sort((a, b) => a.projectedY.CompareTo(b.projectedY));
 
-        int count = projections.Count;
+    //    int count = projections.Count;
 
-        // Check for 3 consecutive same-side values (regular)
-        for (int i = 0; i <= count - 3; i++)
-        {
-            bool side1 = projections[i].isLeft;
-            bool side2 = projections[i + 1].isLeft;
-            bool side3 = projections[i + 2].isLeft;
+    //    // Check for 3 consecutive same-side values (regular)
+    //    for (int i = 0; i <= count - 3; i++)
+    //    {
+    //        bool side1 = projections[i].isLeft;
+    //        bool side2 = projections[i + 1].isLeft;
+    //        bool side3 = projections[i + 2].isLeft;
 
-            if (side1 == side2 && side2 == side3)
-                return false;
-        }
+    //        if (side1 == side2 && side2 == side3)
+    //            return false;
+    //    }
 
-        // Check wraparound triplets with side flipping
-        if (count >= 3)
-        {
-            // Wrap: last, first, second
-            bool side1 = !projections[count - 1].isLeft; // flipped
-            bool side2 = projections[0].isLeft;
-            bool side3 = projections[1].isLeft;
-            if (side1 == side2 && side2 == side3)
-                return false;
+    //    // Check wraparound triplets with side flipping
+    //    if (count >= 3)
+    //    {
+    //        // Wrap: last, first, second
+    //        bool side1 = !projections[count - 1].isLeft; // flipped
+    //        bool side2 = projections[0].isLeft;
+    //        bool side3 = projections[1].isLeft;
+    //        if (side1 == side2 && side2 == side3)
+    //            return false;
 
-            // Wrap: second-last, last, first
-            side1 = projections[count - 2].isLeft;
-            side2 = projections[count - 1].isLeft;
-            side3 = !projections[0].isLeft; // flipped
-            if (side1 == side2 && side2 == side3)
-                return false;
-        }
+    //        // Wrap: second-last, last, first
+    //        side1 = projections[count - 2].isLeft;
+    //        side2 = projections[count - 1].isLeft;
+    //        side3 = !projections[0].isLeft; // flipped
+    //        if (side1 == side2 && side2 == side3)
+    //            return false;
+    //    }
 
-        return true;
-    }
+    //    return true;
+    //}
 
     public void MovePoint(int pointIndex, Vector3 targetPosition)
     {
