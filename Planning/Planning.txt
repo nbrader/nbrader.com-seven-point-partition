@@ -23,3 +23,15 @@ I'm now thinking I could solve this by something along this reasoning:
         For any given direction not already discarded by LEMMA 1, I can always find potential splits using LEMMA 4.
         I can discard some of these cases using LEMMA 2 and LEMMA 3.
         I feel like I can use something from LEMMA 5 to efficiently enumerate the possible unique cases, testing each to see if they're a solution. I might need more LEMMAS to bring down the number of cases to check though.
+        
+        Try this:
+            Enumerate all lines going through two points of the set which have exactly 2 on one side and 3 on the other of the remaining points.
+            Note that we can nudge any of these lines in 1 of four ways two choose on which side we want each of the two points to lie. For every line, find the 3 of these 4 choices which result in 4 points on one side and 3 on the other.
+            For every choice of 3 of these lines:
+                Take 2 of the lines:
+                    For every combination of choices of nudge of these two lines (out of the 3 for each line we found):
+                        Test to see LEMMA 2 holds and reject if not.
+                        If LEMMA 2 holds then:
+                            For every choice of nudge on the remaining line:
+                                Test to see if we've partitioned into 1/1/1/1/1/1/1
+                
