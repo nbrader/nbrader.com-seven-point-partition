@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 public class Line : MonoBehaviour
 {
@@ -9,19 +10,23 @@ public class Line : MonoBehaviour
     public SpriteRenderer spriteRenderer;
 
     public Transform lineTransform;
-
     public Transform inputPoint1;
     public Transform inputPoint2;
-
     public Transform endPoint1;
     public Transform endPoint2;
 
     public Color colour;
 
+    // Event for allowing external scripts to request visibility.
+    public event Func<Line, bool> ShouldBeVisible;
+
+    // Event for allowing external scripts to force the line hidden.
+    public event Func<Line, bool> ForceHidden;
+
     public bool IsVisible
     {
-        get { return lineTransform.gameObject.activeInHierarchy; }
-        set { lineTransform.gameObject.SetActive(value); }
+        get => spriteRenderer.enabled;
+        private set => spriteRenderer.enabled = value;
     }
 
     private void Update()
@@ -34,9 +39,26 @@ public class Line : MonoBehaviour
 
         lineTransform.position = endPoint1.position;
         lineTransform.rotation = Quaternion.Euler(0f, 0f, degrees);
-        lineTransform.transform.localScale = new Vector3(dist, SevenPointPartitioner.lineVisibleThickness, 1);
+        lineTransform.localScale = new Vector3(dist, SevenPointPartitioner.lineVisibleThickness, 1);
 
         spriteRenderer.color = colour;
+
+        UpdateVisibility();
+    }
+
+    private void UpdateVisibility()
+    {
+        // Ask all subscribers if they want the line shown
+        bool requestedVisible = ShouldBeVisible?.GetInvocationList()
+            .Cast<Func<Line, bool>>()
+            .Any(callback => callback(this)) ?? false;
+
+        // Ask all subscribers if they want the line forcibly hidden
+        bool forceHidden = ForceHidden?.GetInvocationList()
+            .Cast<Func<Line, bool>>()
+            .Any(callback => callback(this)) ?? false;
+
+        IsVisible = requestedVisible && !forceHidden;
     }
 
     public void UpdateLineEndpoints()
@@ -46,32 +68,28 @@ public class Line : MonoBehaviour
 
         List<Vector2> intersections = GetLineCameraViewIntersections(p1, p2);
 
-        if (intersections.Count >= 2)
+        if (intersections.Count == 2)
         {
             endPoint1.position = new Vector3(intersections[0].x, intersections[0].y, 0);
             endPoint2.position = new Vector3(intersections[1].x, intersections[1].y, 0);
         }
         else
         {
-            // Fallback in case intersections are invalid
-            endPoint1.position = p1;
-            endPoint2.position = p2;
+            // Move endpoints off-screen to avoid drawing garbage if not visible
+            endPoint1.position = Vector3.one * 99999f;
+            endPoint2.position = Vector3.one * 99999f;
         }
     }
 
     private List<Vector2> GetLineCameraViewIntersections(Vector2 a, Vector2 b)
     {
-        if (a == b)
-        {
-            b = a + Vector2.right;
-        }
+        if (a == b) b = a + Vector2.right;
 
         Camera cam = Camera.main;
         float camHeight = 2f * cam.orthographicSize;
         float camWidth = camHeight * cam.aspect;
         Vector2 camCenter = cam.transform.position;
 
-        // Double the width and height
         camWidth *= 2f;
         camHeight *= 2f;
 
@@ -80,10 +98,10 @@ public class Line : MonoBehaviour
         float bottom = camCenter.y - camHeight / 2f;
         float top = camCenter.y + camHeight / 2f;
 
-        Vector2 topLeft = new Vector2(left, top);
-        Vector2 topRight = new Vector2(right, top);
-        Vector2 bottomRight = new Vector2(right, bottom);
-        Vector2 bottomLeft = new Vector2(left, bottom);
+        Vector2 topLeft = new(left, top);
+        Vector2 topRight = new(right, top);
+        Vector2 bottomRight = new(right, bottom);
+        Vector2 bottomLeft = new(left, bottom);
 
         (Vector2, Vector2)[] edges =
         {
@@ -99,16 +117,13 @@ public class Line : MonoBehaviour
         {
             Vector2? intersection = LineLineIntersection(a, b, edge.Item1, edge.Item2);
             if (intersection.HasValue)
-            {
                 intersections.Add(intersection.Value);
-            }
         }
 
         Vector2 dir = (b - a).normalized;
         return intersections
             .Distinct()
             .OrderBy(p => Vector2.Dot(p - a, dir))
-            .Skip(1)
             .Take(2)
             .ToList();
     }
@@ -117,12 +132,18 @@ public class Line : MonoBehaviour
     {
         Vector2 r = p2 - p1;
         Vector2 s = q2 - q1;
-        float rxs = r.x * s.y - r.y * s.x;
 
+        float rxs = r.x * s.y - r.y * s.x;
         if (Mathf.Approximately(rxs, 0f))
             return null;
 
-        float t = ((q1 - p1).x * s.y - (q1 - p1).y * s.x) / rxs;
-        return p1 + t * r;
+        Vector2 qp = q1 - p1;
+        float t = (qp.x * s.y - qp.y * s.x) / rxs;
+        float u = (qp.x * r.y - qp.y * r.x) / rxs;
+
+        if (u >= 0f && u <= 1f)
+            return p1 + t * r;
+
+        return null;
     }
 }
