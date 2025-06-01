@@ -125,7 +125,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
                 // Assign debug color
                 Color color = Color.green;
-                color.a = 0.5f;
+                color.a = 0.18f;
                 line.colour = color;
 
                 // Register visibility rule
