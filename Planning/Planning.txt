@@ -34,4 +34,7 @@ I'm now thinking I could solve this by something along this reasoning:
                         If LEMMA 2 holds then:
                             For every choice of nudge on the remaining line:
                                 Test to see if we've partitioned into 1/1/1/1/1/1/1
-                
+
+I could do away with forcing the points into "general position" (or assuming they are) and actually account for the various edge cases where 3 points lie on the same line.
+
+I could make an infinitesimally small step in a direction if I was working with hyperreal numbers.
