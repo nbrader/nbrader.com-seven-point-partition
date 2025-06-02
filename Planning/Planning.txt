@@ -38,3 +38,6 @@ I'm now thinking I could solve this by something along this reasoning:
 I could do away with forcing the points into "general position" (or assuming they are) and actually account for the various edge cases where 3 points lie on the same line.
 
 I could make an infinitesimally small step in a direction if I was working with hyperreal numbers.
+
+CONJECTURE 1: A solution with a given point at it's centre exists for every set of 3 other points which form a triangle which encloses that point
+CONJECTURE 2: A solution with a given point at it's centre exists for every set of 3 other points which form a triangle which encloses that point and the 3 remaining points occur between those triangle points when ordered by angle between some fixed direction and the displacement from the centre to that point.
