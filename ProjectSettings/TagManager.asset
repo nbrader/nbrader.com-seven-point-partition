@@ -41,12 +41,12 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
-  - name: Bars
+  - name: Lines
     uniqueID: 3275178153
     locked: 0
-  - name: HalfBars
+  - name: InputPoints
     uniqueID: 524405031
     locked: 0
-  - name: Joints
-    uniqueID: 3211779913
+  - name: LinePoints
+    uniqueID: 1308437377
     locked: 0
