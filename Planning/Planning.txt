@@ -30,7 +30,7 @@ I'm now thinking I could solve this by something along this reasoning:
             For every choice of 3 of these lines:
                 Take 2 of the lines:
                     For every combination of choices of nudge of these two lines (out of the 3 for each line we found):
-                        Test to see LEMMA 2 holds and reject if not.
+                        Test to see LEMMA 2 holds and if not cache as to be rejected in future and reject now.
                         If LEMMA 2 holds then:
                             For every choice of nudge on the remaining line:
                                 Test to see if we've partitioned into 1/1/1/1/1/1/1
