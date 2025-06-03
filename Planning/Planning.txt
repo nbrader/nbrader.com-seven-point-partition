@@ -26,14 +26,15 @@ I'm now thinking I could solve this by something along this reasoning:
         
         Try this:
             Enumerate all lines going through two points of the set which have exactly 2 on one side and 3 on the other of the remaining points.
-            Note that we can nudge any of these lines in 1 of four ways two choose on which side we want each of the two points to lie. For every line, find the 3 of these 4 choices which result in 4 points on one side and 3 on the other.
-            For every choice of 3 of these lines:
-                Take 2 of the lines:
-                    For every combination of choices of nudge of these two lines (out of the 3 for each line we found):
-                        Test to see LEMMA 2 holds and if not cache as to be rejected in future and reject now.
-                        If LEMMA 2 holds then:
-                            For every choice of nudge on the remaining line:
-                                Test to see if we've partitioned into 1/1/1/1/1/1/1
+            Note that we can nudge any of these lines in 1 of four ways two choose on which side we want each of the two points to lie.
+            It's also not hard to see that, so long as there are more than 2 distinct points as bounds to a line (where "bounding" is this notion of keeping points on the same side of the line), the line can always be moved within its current bounds to a place where it is arbitrarily close to 2 points on the same side of it.
+            For the above reason, we can find all solutions (up to difference in any line position which keeps the side on which all points occur of it constant) with no less of generality by considering only such lines which are nudged from the line by a sufficiently small amount on the same side, such that both the points previously on the line reside on the side which had only 2 points, resulting in 4 points on one side and 3 on the other.
+            For every choice of 2 of these lines:
+                Test to see LEMMA 2 holds
+                    If LEMMA 2 doesn't hold, reject.
+                    If LEMMA 2 holds then add to a list of found pairs of lines.
+                From the list of found pairs of lines, find triples of lines where every 2 lines of the triple occur in the list of found pairs of lines.
+                    Finally, Test to see if we've partitioned into 1/1/1/1/1/1/1 and add to a solution list if so. [NOTE: CHECK IF THIS LAST CHECK IS REDUNDANT AS MAYBE IT MUST ALWAYS BE A PARTITION (CONJECTURE)]
 
 I could do away with forcing the points into "general position" (or assuming they are) and actually account for the various edge cases where 3 points lie on the same line.
 
