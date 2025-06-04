@@ -264,11 +264,12 @@ public class SevenPointPartitioner : MonoBehaviour
 
             if (cross > 0)
                 leftCount++;
-            else
+
+            if (cross < 0)
                 rightCount++;
         }
 
-        return leftCount <= 3 && rightCount <= 3;
+        return (leftCount == 1 && rightCount == 4) || (leftCount == 4 && rightCount == 1);
     }
 
     public void OnBeginDrag(PointerEventData eventData)
