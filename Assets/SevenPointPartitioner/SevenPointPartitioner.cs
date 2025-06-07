@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using TMPro;
 
 public enum SevenPointPartitionerPartType
 {
@@ -13,6 +14,7 @@ public class SevenPointPartitioner : MonoBehaviour
     public List<Point> points;
 
     public GameObject halfPlanePrefab;
+    public TextMeshProUGUI warningText; // UI Text component to display warnings
     public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f;
     float pointColliderThickness;
@@ -23,6 +25,7 @@ public class SevenPointPartitioner : MonoBehaviour
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
     private bool isDragging = false;
     private bool isCameraDragging = false;
+    private bool hasCollinearPoints = false;
 
     private Vector3 lastMousePosition;
 
@@ -102,7 +105,7 @@ public class SevenPointPartitioner : MonoBehaviour
             halfPlane.colour = debugColor;
             colorIndex++;
 
-            halfPlane.ShouldBeVisible += _ => true;
+            halfPlane.ShouldBeVisible += _ => !hasCollinearPoints;
 
             debugHalfPlanes.Add(halfPlane);
         }
@@ -130,8 +133,8 @@ public class SevenPointPartitioner : MonoBehaviour
                     color.a = 0.18f;
                     halfPlane.colour = color;
 
-                    // Register visibility rule
-                    halfPlane.ShouldBeVisible += ShouldShowHalfPlane;
+                    // Register visibility rule - hide if collinear points exist
+                    halfPlane.ShouldBeVisible += line => !hasCollinearPoints && ShouldShowHalfPlane(line);
 
                     halfPlanes.Add(halfPlane);
                 }
@@ -139,8 +142,60 @@ public class SevenPointPartitioner : MonoBehaviour
         }
     }
 
+    private bool CheckForCollinearPoints()
+    {
+        const float collinearityThreshold = 0.01f; // Tolerance for floating point comparison
+
+        // Check all combinations of 3 points
+        for (int i = 0; i < points.Count; i++)
+        {
+            for (int j = i + 1; j < points.Count; j++)
+            {
+                for (int k = j + 1; k < points.Count; k++)
+                {
+                    Vector2 p1 = points[i].Position;
+                    Vector2 p2 = points[j].Position;
+                    Vector2 p3 = points[k].Position;
+
+                    // Calculate cross product to check collinearity
+                    // If three points are collinear, the cross product of vectors (p2-p1) and (p3-p1) will be zero
+                    Vector2 v1 = p2 - p1;
+                    Vector2 v2 = p3 - p1;
+                    float crossProduct = v1.x * v2.y - v1.y * v2.x;
+
+                    if (Mathf.Abs(crossProduct) < collinearityThreshold)
+                    {
+                        return true; // Found collinear points
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void UpdateWarningDisplay()
+    {
+        if (warningText != null)
+        {
+            if (hasCollinearPoints)
+            {
+                warningText.text = "WARNING: Three or more points are collinear. Move points to continue.";
+                warningText.color = Color.red;
+                warningText.gameObject.SetActive(true);
+            }
+            else
+            {
+                warningText.gameObject.SetActive(false);
+            }
+        }
+    }
+
     private void CheckForPossibleCentres()
     {
+        // Skip this logic if we have collinear points
+        if (hasCollinearPoints) return;
+
         List<int> sortedIndices = Enumerable.Range(0, points.Count).ToList();
 
         // Sort indices by Y descending, then X ascending, then Z ascending
@@ -190,6 +245,16 @@ public class SevenPointPartitioner : MonoBehaviour
     float scrollAmount = 0f;
     private void Update()
     {
+        // Check for collinear points first
+        bool previousCollinearState = hasCollinearPoints;
+        hasCollinearPoints = CheckForCollinearPoints();
+
+        // Update warning display if collinearity state changed
+        if (hasCollinearPoints != previousCollinearState)
+        {
+            UpdateWarningDisplay();
+        }
+
         CheckForPossibleCentres();
 
         if (isDragging) return;
@@ -215,7 +280,7 @@ public class SevenPointPartitioner : MonoBehaviour
             float scrollDelta = scrollInput;
             scrollAmount -= scrollDelta;
             scrollAmount = Mathf.Clamp(scrollAmount, -5f, 5f);
-            Camera.main.orthographicSize = Mathf.Pow(5, 1+scrollAmount/5f);
+            Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
             Camera.main.orthographicSize = Mathf.Clamp(Camera.main.orthographicSize, -50f, 50f);
         }
 
@@ -248,6 +313,9 @@ public class SevenPointPartitioner : MonoBehaviour
 
     private bool ShouldShowHalfPlane(Line halfPlane)
     {
+        // Don't show half-planes if we have collinear points
+        if (hasCollinearPoints) return false;
+
         Vector2 a = halfPlane.inputPoint1.position;
         Vector2 b = halfPlane.inputPoint2.position;
 
