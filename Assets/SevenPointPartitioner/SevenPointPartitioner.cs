@@ -269,7 +269,7 @@ public class SevenPointPartitioner : MonoBehaviour
                 rightCount++;
         }
 
-        return (leftCount == 1 && rightCount == 4) || (leftCount == 4 && rightCount == 1);
+        return (leftCount == 2 && rightCount == 3) || (leftCount == 3 && rightCount == 2) || (leftCount == 1 && rightCount == 4) || (leftCount == 4 && rightCount == 1);
     }
 
     public void OnBeginDrag(PointerEventData eventData)

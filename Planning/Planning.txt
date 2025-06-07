@@ -25,10 +25,10 @@ I'm now thinking I could solve this by something along this reasoning:
         I feel like I can use something from LEMMA 5 to efficiently enumerate the possible unique cases, testing each to see if they're a solution. I might need more LEMMAS to bring down the number of cases to check though.
         
         Try this:
-            Enumerate all lines going through two points of the set which have exactly 2 on one side and 3 on the other of the remaining points.
+            Enumerate all lines going through two points of the set which have exactly 2 on one side and 3 on the other or 1 on one side and 4 on the other of the remaining points.
             Note that we can nudge any of these lines in 1 of four ways two choose on which side we want each of the two points to lie.
             It's also not hard to see that, so long as there are more than 2 distinct points as bounds to a line (where "bounding" is this notion of keeping points on the same side of the line), the line can always be moved within its current bounds to a place where it is arbitrarily close to 2 points on the same side of it.
-            For the above reason, we can find all solutions (up to difference in any line position which keeps the side on which all points occur of it constant) with no less of generality by considering only such lines which are nudged from the line by a sufficiently small amount on the same side, such that both the points previously on the line reside on the side which had only 2 points, resulting in 4 points on one side and 3 on the other.
+            For the above reason, we can find all solutions (up to difference in any line position which keeps the side on which all points occur of it constant) with no less of generality by considering only such lines which are nudged from the line by a sufficiently small amount on the same side, such that both the points previously on the line reside on the side which had fewer points, resulting in 4 points on one side and 3 on the other.
             For every choice of 2 of these lines:
                 Test to see LEMMA 2 holds
                     If LEMMA 2 doesn't hold, reject.
