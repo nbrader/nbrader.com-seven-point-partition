@@ -45,6 +45,10 @@ public class SevenPointPartitioner : MonoBehaviour
     [Header("Point Inclusion Line Coloring")]
     public bool enablePointInclusionColoring = true;
 
+    // Debug lines toggle
+    [Header("Debug Lines Control")]
+    public bool hideNonDebugLines = false;
+
     // Color mapping for the 8 possible combinations (false,false,false) to (true,true,true)
     private static readonly Color[] inclusionColors = new Color[]
     {
@@ -181,6 +185,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
                     // Register visibility rule - hide if collinear points exist
                     halfPlane.ShouldBeVisible += line => !hasCollinearPoints && ShouldShowHalfPlane(line);
+                    halfPlane.ForceHidden += _ => hideNonDebugLines;
 
                     halfPlanes.Add(halfPlane);
                 }
@@ -506,6 +511,12 @@ public class SevenPointPartitioner : MonoBehaviour
     float scrollAmount = 0f;
     private void Update()
     {
+        // Handle spacebar input for toggling debug lines
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            hideNonDebugLines = !hideNonDebugLines;
+        }
+
         // Check for collinear points first
         bool previousCollinearState = hasCollinearPoints;
         hasCollinearPoints = CheckForCollinearPoints();
