@@ -721,7 +721,9 @@ MonoBehaviour:
 
     Pan Camera
 
-    Zoom'
+    Zoom
+
+    Hide/Show Candidate Partitions'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1766,8 +1768,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 614.19, y: -53.008}
-  m_SizeDelta: {x: 371.6211, y: 82.0163}
+  m_AnchoredPosition: {x: 614.19, y: -33.459824}
+  m_SizeDelta: {x: 371.6211, y: 42.92}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1598873993
 MonoBehaviour:
@@ -2034,7 +2036,9 @@ MonoBehaviour:
     Left Click & Drag (On Background):
 
     Scroll
-    (On Background):'
+    (On Background):
+
+    Press Space Bar:'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2227,6 +2231,13 @@ MonoBehaviour:
   - {fileID: 827683305}
   halfPlanePrefab: {fileID: 3839745485931276093, guid: e0369a907984692419a29e4a57238b49, type: 3}
   warningText: {fileID: 1598873993}
+  coloringTriple:
+    halfPlaneA: {fileID: 0}
+    halfPlaneB: {fileID: 0}
+    halfPlaneC: {fileID: 0}
+  enableHalfPlaneColoring: 1
+  enablePointInclusionColoring: 1
+  hideNonDebugLines: 0
   debugHalfPlanePairs:
   - pointA: {fileID: 152839438}
     pointB: {fileID: 1534003469}
