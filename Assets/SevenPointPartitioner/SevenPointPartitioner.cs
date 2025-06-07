@@ -241,7 +241,7 @@ public class SevenPointPartitioner : MonoBehaviour
             }
         }
 
-        Debug.Log($"Found {qualifyingLines.Count} qualifying lines");
+        //Debug.Log($"Found {qualifyingLines.Count} qualifying lines");
 
         // Step 2: Find valid pairs that satisfy LEMMA 2
         List<(HalfPlane, HalfPlane)> validPairs = new List<(HalfPlane, HalfPlane)>();
@@ -257,7 +257,7 @@ public class SevenPointPartitioner : MonoBehaviour
             }
         }
 
-        Debug.Log($"Found {validPairs.Count} valid pairs satisfying LEMMA 2");
+        //Debug.Log($"Found {validPairs.Count} valid pairs satisfying LEMMA 2");
 
         // Step 3: Find triples where every pair is valid and instantiate triangle half-planes
         int colorIndex = 0;
@@ -298,7 +298,7 @@ public class SevenPointPartitioner : MonoBehaviour
                             Color triangleColor = validTriangleColors[colorIndex % validTriangleColors.Length];
                             triangleColors.Add(triangleColor);
 
-                            Debug.Log($"Valid partition triangle found: Lines {GetLineDescription(line1)}, {GetLineDescription(line2)}, {GetLineDescription(line3)}");
+                            //Debug.Log($"Valid partition triangle found: Lines {GetLineDescription(line1)}, {GetLineDescription(line2)}, {GetLineDescription(line3)}");
 
                             colorIndex++;
                         }
@@ -307,7 +307,7 @@ public class SevenPointPartitioner : MonoBehaviour
             }
         }
 
-        Debug.Log($"Found {validTripleCount} valid triples, {validPartitionTriangles.Count} create unique partitions");
+        //Debug.Log($"Found {validTripleCount} valid triples, {validPartitionTriangles.Count} create unique partitions");
     }
 
     /// <summary>
@@ -451,10 +451,10 @@ public class SevenPointPartitioner : MonoBehaviour
         // Should have exactly 7 unique partitions for 7 points (1/1/1/1/1/1/1)
         bool isUnique = partitionCodes.Count == 7;
 
-        if (isUnique)
-        {
-            Debug.Log($"Unique partition found with codes: [{string.Join(", ", partitionCodes.OrderBy(x => x))}]");
-        }
+        //if (isUnique)
+        //{
+        //    Debug.Log($"Unique partition found with codes: [{string.Join(", ", partitionCodes.OrderBy(x => x))}]");
+        //}
 
         return isUnique;
     }
@@ -895,8 +895,8 @@ public class SevenPointPartitioner : MonoBehaviour
         points[pointIndex].Position = targetPosition;
 
         // Update colors when points move
-        UpdatePointColorsFromHalfPlaneInclusions();
-        UpdateHalfPlaneColorsFromPointInclusions();
+        //UpdatePointColorsFromHalfPlaneInclusions();
+        //UpdateHalfPlaneColorsFromPointInclusions();
         FindValidPartitionTriangles();
     }
 
@@ -942,8 +942,8 @@ public class SevenPointPartitioner : MonoBehaviour
             UpdateWarningDisplay();
         }
 
-        UpdatePointColorsFromHalfPlaneInclusions();
-        UpdateHalfPlaneColorsFromPointInclusions();
+        //UpdatePointColorsFromHalfPlaneInclusions();
+        //UpdateHalfPlaneColorsFromPointInclusions();
         //FindValidPartitionTriangles();
 
         // Reset highlights
@@ -1067,8 +1067,8 @@ public class SevenPointPartitioner : MonoBehaviour
             OnEndDragPoint(eventData);
         }
 
-        UpdatePointColorsFromHalfPlaneInclusions();
-        UpdateHalfPlaneColorsFromPointInclusions();
+        //UpdatePointColorsFromHalfPlaneInclusions();
+        //UpdateHalfPlaneColorsFromPointInclusions();
         FindValidPartitionTriangles();
     }
 
