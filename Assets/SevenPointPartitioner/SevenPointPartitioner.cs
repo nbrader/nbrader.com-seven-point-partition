@@ -47,7 +47,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
     // Debug lines toggle
     [Header("Debug Lines Control")]
-    public bool hideNonDebugLines = false;
+    public bool hideNonDebugLines = true;
 
     // Color mapping for the 8 possible combinations (false,false,false) to (true,true,true)
     private static readonly Color[] inclusionColors = new Color[]
