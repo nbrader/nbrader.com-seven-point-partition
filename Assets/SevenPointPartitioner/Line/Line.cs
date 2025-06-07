@@ -17,6 +17,14 @@ public class Line : MonoBehaviour
 
     public Color colour;
 
+    // Instance-specific thickness that can be set by external scripts
+    private float _thickness = -1f; // -1 indicates use default
+    public float Thickness
+    {
+        get => _thickness < 0 ? SevenPointPartitioner.lineVisibleThickness : _thickness;
+        set => _thickness = value;
+    }
+
     // Event for allowing external scripts to request visibility.
     public event Func<Line, bool> ShouldBeVisible;
 
@@ -41,7 +49,7 @@ public class Line : MonoBehaviour
 
         lineTransform.position = endPoint1.position;
         lineTransform.rotation = Quaternion.Euler(0f, 0f, degrees);
-        lineTransform.localScale = new Vector3(dist, SevenPointPartitioner.lineVisibleThickness, 1);
+        lineTransform.localScale = new Vector3(dist, Thickness, 1);
 
         spriteRenderer.color = colour;
 

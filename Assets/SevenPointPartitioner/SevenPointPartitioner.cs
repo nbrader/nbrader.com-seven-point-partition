@@ -49,6 +49,14 @@ public class SevenPointPartitioner : MonoBehaviour
     [Header("Debug Lines Control")]
     public bool hideNonDebugLines = true;
 
+    // Valid partition triangles
+    [Header("Valid Partition Triangles")]
+    public bool showValidPartitionTriangles = true;
+    public float validTriangleThickness = 0.3f;
+
+    private List<HalfPlaneTriple> validPartitionTriangles = new List<HalfPlaneTriple>();
+    private List<Color> triangleColors = new List<Color>();
+
     // Color mapping for the 8 possible combinations (false,false,false) to (true,true,true)
     private static readonly Color[] inclusionColors = new Color[]
     {
@@ -65,6 +73,23 @@ public class SevenPointPartitioner : MonoBehaviour
     // Color mapping for 128 possible combinations of 7 points (2^7 = 128)
     // We'll use a hash-based coloring system for the 128 combinations
     private static readonly Color[] pointInclusionColors = GeneratePointInclusionColors();
+
+    // Colors for valid partition triangles
+    private static readonly Color[] validTriangleColors = new Color[]
+    {
+        new Color(1f, 0f, 0f, 0.8f),      // Red
+        new Color(0f, 1f, 0f, 0.8f),      // Green
+        new Color(0f, 0f, 1f, 0.8f),      // Blue
+        new Color(1f, 1f, 0f, 0.8f),      // Yellow
+        new Color(1f, 0f, 1f, 0.8f),      // Magenta
+        new Color(0f, 1f, 1f, 0.8f),      // Cyan
+        new Color(1f, 0.5f, 0f, 0.8f),    // Orange
+        new Color(0.5f, 0f, 1f, 0.8f),    // Purple
+        new Color(0f, 1f, 0.5f, 0.8f),    // Spring Green
+        new Color(1f, 0f, 0.5f, 0.8f),    // Rose
+        new Color(0.5f, 1f, 0f, 0.8f),    // Chartreuse
+        new Color(0f, 0.5f, 1f, 0.8f),    // Azure
+    };
 
     private int? closestPointIndex;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
@@ -194,6 +219,383 @@ public class SevenPointPartitioner : MonoBehaviour
     }
 
     /// <summary>
+    /// Finds all valid partition triangles that create unique regions for the 7 points
+    /// Following the algorithm: enumerate qualifying lines, test pairs with LEMMA 2, find valid triples
+    /// </summary>
+    private void FindValidPartitionTriangles()
+    {
+        validPartitionTriangles.Clear();
+        triangleColors.Clear();
+
+        if (points.Count != 7 || hasCollinearPoints)
+            return;
+
+        // Step 1: Find all qualifying lines (2-3 or 1-4 splits, nudged to 3-4 splits)
+        List<HalfPlane> qualifyingLines = new List<HalfPlane>();
+
+        foreach (var halfPlane in halfPlanes)
+        {
+            if (IsQualifyingLine(halfPlane))
+            {
+                qualifyingLines.Add(halfPlane);
+            }
+        }
+
+        Debug.Log($"Found {qualifyingLines.Count} qualifying lines");
+
+        // Step 2: Find valid pairs that satisfy LEMMA 2
+        List<(HalfPlane, HalfPlane)> validPairs = new List<(HalfPlane, HalfPlane)>();
+
+        for (int i = 0; i < qualifyingLines.Count; i++)
+        {
+            for (int j = i + 1; j < qualifyingLines.Count; j++)
+            {
+                if (SatisfiesLemma2(qualifyingLines[i], qualifyingLines[j]))
+                {
+                    validPairs.Add((qualifyingLines[i], qualifyingLines[j]));
+                }
+            }
+        }
+
+        Debug.Log($"Found {validPairs.Count} valid pairs satisfying LEMMA 2");
+
+        // Step 3: Find triples where every pair is valid and instantiate triangle half-planes
+        int colorIndex = 0;
+        int validTripleCount = 0;
+
+        // Clean up any previously created triangle half-planes
+        CleanupTriangleHalfPlanes();
+
+        for (int i = 0; i < qualifyingLines.Count; i++)
+        {
+            for (int j = i + 1; j < qualifyingLines.Count; j++)
+            {
+                for (int k = j + 1; k < qualifyingLines.Count; k++)
+                {
+                    var line1 = qualifyingLines[i];
+                    var line2 = qualifyingLines[j];
+                    var line3 = qualifyingLines[k];
+
+                    // Check if all three pairs are valid
+                    bool pair12Valid = validPairs.Contains((line1, line2)) || validPairs.Contains((line2, line1));
+                    bool pair13Valid = validPairs.Contains((line1, line3)) || validPairs.Contains((line3, line1));
+                    bool pair23Valid = validPairs.Contains((line2, line3)) || validPairs.Contains((line3, line2));
+
+                    if (pair12Valid && pair13Valid && pair23Valid)
+                    {
+                        validTripleCount++;
+
+                        // Check if this triple creates unique partitions for all 7 points (1/1/1/1/1/1/1)
+                        if (CreatesUniquePartitions(line1, line2, line3))
+                        {
+                            // Create new half-plane instances for this triangle
+                            var triangleHalfPlanes = CreateTriangleHalfPlanes(line1, line2, line3, colorIndex);
+
+                            var triple = new HalfPlaneTriple(triangleHalfPlanes.line1, triangleHalfPlanes.line2, triangleHalfPlanes.line3);
+                            validPartitionTriangles.Add(triple);
+
+                            // Assign unique color to this triangle
+                            Color triangleColor = validTriangleColors[colorIndex % validTriangleColors.Length];
+                            triangleColors.Add(triangleColor);
+
+                            Debug.Log($"Valid partition triangle found: Lines {GetLineDescription(line1)}, {GetLineDescription(line2)}, {GetLineDescription(line3)}");
+
+                            colorIndex++;
+                        }
+                    }
+                }
+            }
+        }
+
+        Debug.Log($"Found {validTripleCount} valid triples, {validPartitionTriangles.Count} create unique partitions");
+    }
+
+    /// <summary>
+    /// Enhanced version that properly implements the nudging concept from the algorithm
+    /// </summary>
+    private bool IsQualifyingLine(HalfPlane halfPlane)
+    {
+        Vector2 a = halfPlane.inputPoint1.position;
+        Vector2 b = halfPlane.inputPoint2.position;
+
+        int leftCount = 0;
+        int rightCount = 0;
+        int onLineCount = 0;
+
+        // Count points on each side of the line (excluding the two points defining the line)
+        foreach (Point p in points)
+        {
+            if (p.transform == halfPlane.inputPoint1 || p.transform == halfPlane.inputPoint2)
+                continue;
+
+            Vector2 pt = p.transform.position;
+            float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
+
+            const float epsilon = 1e-6f;
+            if (Mathf.Abs(cross) < epsilon)
+            {
+                onLineCount++;
+            }
+            else if (cross > 0)
+            {
+                leftCount++;
+            }
+            else
+            {
+                rightCount++;
+            }
+        }
+
+        // Original splits we're looking for: 2-3 or 1-4
+        // After nudging (moving points on line to the side with fewer points), we get 3-4 splits
+        bool isValid = false;
+
+        // Case 1: 2-3 split with possible points on the line
+        if ((leftCount == 2 && rightCount == 3) || (leftCount == 3 && rightCount == 2))
+        {
+            isValid = true;
+        }
+        // Case 2: 1-4 split with possible points on the line  
+        else if ((leftCount == 1 && rightCount == 4) || (leftCount == 4 && rightCount == 1))
+        {
+            isValid = true;
+        }
+        // Case 3: Account for nudging - if we have points on the line, they can be moved to create valid splits
+        else if (onLineCount > 0)
+        {
+            // Try moving points on the line to each side and see if we get a valid split
+            int totalPoints = leftCount + rightCount + onLineCount;
+
+            // Check if moving all points on line to left side gives 2-3 or 1-4 split
+            int newLeftCount = leftCount + onLineCount;
+            int newRightCount = rightCount;
+            if ((newLeftCount == 2 && newRightCount == 3) || (newLeftCount == 3 && newRightCount == 2) ||
+                (newLeftCount == 1 && newRightCount == 4) || (newLeftCount == 4 && newRightCount == 1))
+            {
+                isValid = true;
+            }
+
+            // Check if moving all points on line to right side gives 2-3 or 1-4 split
+            newLeftCount = leftCount;
+            newRightCount = rightCount + onLineCount;
+            if ((newLeftCount == 2 && newRightCount == 3) || (newLeftCount == 3 && newRightCount == 2) ||
+                (newLeftCount == 1 && newRightCount == 4) || (newLeftCount == 4 && newRightCount == 1))
+            {
+                isValid = true;
+            }
+        }
+
+        return isValid;
+    }
+
+    /// <summary>
+    /// Placeholder for LEMMA 2 implementation - needs to be implemented based on your specific requirements
+    /// For now, this ensures lines are not identical and checks for basic geometric constraints
+    /// </summary>
+    private bool SatisfiesLemma2(HalfPlane line1, HalfPlane line2)
+    {
+        // Basic check: lines must be different
+        if (line1 == line2) return false;
+
+        // Check that the lines are not identical (same endpoints)
+        bool sameEndpoints = (line1.inputPoint1 == line2.inputPoint1 && line1.inputPoint2 == line2.inputPoint2) ||
+                            (line1.inputPoint1 == line2.inputPoint2 && line1.inputPoint2 == line2.inputPoint1);
+
+        if (sameEndpoints) return false;
+
+        // TODO: Implement the actual LEMMA 2 conditions based on your geometric requirements
+        // This might involve checking intersection properties, orientation, or other geometric constraints
+
+        // For now, we'll use a basic heuristic: the lines should intersect within a reasonable region
+        // and create meaningful partitions
+        Vector2 intersection;
+        if (GetLineIntersection(line1, line2, out intersection))
+        {
+            // Check if intersection is reasonable (not too far from the point cloud)
+            float maxDistance = GetMaxDistanceFromOrigin() * 2; // Reasonable bounds
+            if (intersection.magnitude > maxDistance)
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Enhanced version that properly checks for unique 1/1/1/1/1/1/1 partitioning
+    /// </summary>
+    private bool CreatesUniquePartitions(HalfPlane line1, HalfPlane line2, HalfPlane line3)
+    {
+        HashSet<int> partitionCodes = new HashSet<int>();
+
+        foreach (Point point in points)
+        {
+            Vector2 pos = point.Position;
+
+            // Get inclusion in each half-plane (using consistent orientation)
+            bool in1 = IsPointInHalfPlaneRight(pos, line1);
+            bool in2 = IsPointInHalfPlaneRight(pos, line2);
+            bool in3 = IsPointInHalfPlaneRight(pos, line3);
+
+            // Create a unique code for this combination (3-bit binary number)
+            int code = (in1 ? 1 : 0) + (in2 ? 2 : 0) + (in3 ? 4 : 0);
+
+            // If we've seen this combination before, partitions are not unique
+            if (partitionCodes.Contains(code))
+            {
+                return false;
+            }
+
+            partitionCodes.Add(code);
+        }
+
+        // Should have exactly 7 unique partitions for 7 points (1/1/1/1/1/1/1)
+        bool isUnique = partitionCodes.Count == 7;
+
+        if (isUnique)
+        {
+            Debug.Log($"Unique partition found with codes: [{string.Join(", ", partitionCodes.OrderBy(x => x))}]");
+        }
+
+        return isUnique;
+    }
+
+    /// <summary>
+    /// Helper method to get line intersection point
+    /// </summary>
+    private bool GetLineIntersection(HalfPlane line1, HalfPlane line2, out Vector2 intersection)
+    {
+        Vector2 p1 = line1.inputPoint1.position;
+        Vector2 p2 = line1.inputPoint2.position;
+        Vector2 p3 = line2.inputPoint1.position;
+        Vector2 p4 = line2.inputPoint2.position;
+
+        Vector2 d1 = p2 - p1;
+        Vector2 d2 = p4 - p3;
+
+        float denominator = d1.x * d2.y - d1.y * d2.x;
+
+        intersection = Vector2.zero;
+
+        if (Mathf.Abs(denominator) < 1e-6f)
+        {
+            return false; // Lines are parallel
+        }
+
+        float t = ((p3.x - p1.x) * d2.y - (p3.y - p1.y) * d2.x) / denominator;
+        intersection = p1 + t * d1;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Helper method to get maximum distance from origin for bounds checking
+    /// </summary>
+    private float GetMaxDistanceFromOrigin()
+    {
+        float maxDist = 0f;
+        foreach (Point p in points)
+        {
+            float dist = p.Position.magnitude;
+            if (dist > maxDist) maxDist = dist;
+        }
+        return maxDist;
+    }
+
+    /// <summary>
+    /// Helper method to get a description of a line for debugging
+    /// </summary>
+    private string GetLineDescription(HalfPlane line)
+    {
+        int index1 = points.FindIndex(p => p.transform == line.inputPoint1);
+        int index2 = points.FindIndex(p => p.transform == line.inputPoint2);
+        return $"P{index1}-P{index2}";
+    }
+
+    // List to keep track of instantiated triangle half-planes for cleanup
+    private List<HalfPlane> triangleHalfPlanes = new List<HalfPlane>();
+
+    /// <summary>
+    /// Creates new half-plane instances for a triangle with proper visual styling
+    /// </summary>
+    /// <param name="originalLine1">Original qualifying line 1</param>
+    /// <param name="originalLine2">Original qualifying line 2</param>
+    /// <param name="originalLine3">Original qualifying line 3</param>
+    /// <param name="colorIndex">Index for triangle color</param>
+    /// <returns>Tuple of the three new half-plane instances</returns>
+    private (HalfPlane line1, HalfPlane line2, HalfPlane line3) CreateTriangleHalfPlanes(
+        HalfPlane originalLine1, HalfPlane originalLine2, HalfPlane originalLine3, int colorIndex)
+    {
+        Color triangleColor = validTriangleColors[colorIndex % validTriangleColors.Length];
+
+        // Create first half-plane
+        GameObject halfPlaneObj1 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
+        HalfPlane halfPlane1 = halfPlaneObj1.GetComponent<HalfPlane>();
+        SetupTriangleHalfPlane(halfPlane1, originalLine1, triangleColor);
+
+        // Create second half-plane
+        GameObject halfPlaneObj2 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
+        HalfPlane halfPlane2 = halfPlaneObj2.GetComponent<HalfPlane>();
+        SetupTriangleHalfPlane(halfPlane2, originalLine2, triangleColor);
+
+        // Create third half-plane
+        GameObject halfPlaneObj3 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
+        HalfPlane halfPlane3 = halfPlaneObj3.GetComponent<HalfPlane>();
+        SetupTriangleHalfPlane(halfPlane3, originalLine3, triangleColor);
+
+        // Add to our tracking list for cleanup
+        triangleHalfPlanes.Add(halfPlane1);
+        triangleHalfPlanes.Add(halfPlane2);
+        triangleHalfPlanes.Add(halfPlane3);
+
+        return (halfPlane1, halfPlane2, halfPlane3);
+    }
+
+    /// <summary>
+    /// Sets up a triangle half-plane with proper configuration
+    /// </summary>
+    /// <param name="halfPlane">The half-plane to configure</param>
+    /// <param name="originalLine">The original line to copy configuration from</param>
+    /// <param name="triangleColor">The color for this triangle</param>
+    private void SetupTriangleHalfPlane(HalfPlane halfPlane, HalfPlane originalLine, Color triangleColor)
+    {
+        // Copy the endpoints from the original line
+        halfPlane.inputPoint1 = originalLine.inputPoint1;
+        halfPlane.inputPoint2 = originalLine.inputPoint2;
+        halfPlane.parentSevenPointPartitioner = this;
+
+        // Set visual properties for triangle display
+        halfPlane.colour = triangleColor;
+        halfPlane.Thickness = validTriangleThickness;
+
+        // Set visibility rules - show only when valid triangles should be shown and no collinear points
+        halfPlane.ShouldBeVisible += _ => showValidPartitionTriangles && !hasCollinearPoints;
+        halfPlane.ForceHidden += _ => false; // Don't force hide triangle lines
+    }
+
+    /// <summary>
+    /// Cleans up previously created triangle half-planes
+    /// </summary>
+    private void CleanupTriangleHalfPlanes()
+    {
+        foreach (var halfPlane in triangleHalfPlanes)
+        {
+            if (halfPlane != null && halfPlane.gameObject != null)
+            {
+                DestroyImmediate(halfPlane.gameObject);
+            }
+        }
+        triangleHalfPlanes.Clear();
+    }
+
+    /// <summary>
+    /// Call this method when the component is destroyed or when you need to clean up all triangles
+    /// </summary>
+    private void OnDestroy()
+    {
+        CleanupTriangleHalfPlanes();
+    }
+
+    /// <summary>
     /// Generates a diverse set of colors for the 128 possible point inclusion combinations
     /// </summary>
     /// <returns>Array of 128 distinct colors</returns>
@@ -301,15 +703,27 @@ public class SevenPointPartitioner : MonoBehaviour
             return;
         }
 
-        // Update colors for main half-planes
+        // Update colors for main half-planes (skip those that are part of valid triangles)
         foreach (HalfPlane halfPlane in halfPlanes)
         {
-            var inclusions = PointInclusions(halfPlane);
-            Color newColor = GetColorFromPointInclusions(inclusions);
+            // Check if this half-plane is part of a valid triangle
+            bool isPartOfValidTriangle = validPartitionTriangles.Any(triangle =>
+                triangle.halfPlaneA == halfPlane ||
+                triangle.halfPlaneB == halfPlane ||
+                triangle.halfPlaneC == halfPlane);
 
-            // Set alpha to make the half-planes semi-transparent
-            newColor.a = 0.3f;
-            halfPlane.colour = newColor;
+            if (!isPartOfValidTriangle)
+            {
+                var inclusions = PointInclusions(halfPlane);
+                Color newColor = GetColorFromPointInclusions(inclusions);
+
+                // Set alpha to make the half-planes semi-transparent
+                newColor.a = 0.3f;
+                halfPlane.colour = newColor;
+
+                // Reset thickness for non-triangle lines
+                halfPlane.Thickness = -1f; // Use default thickness
+            }
         }
 
         // Update colors for debug half-planes if they exist
@@ -483,6 +897,7 @@ public class SevenPointPartitioner : MonoBehaviour
         // Update colors when points move
         UpdatePointColorsFromHalfPlaneInclusions();
         UpdateHalfPlaneColorsFromPointInclusions();
+        FindValidPartitionTriangles();
     }
 
     public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
@@ -528,8 +943,8 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         UpdatePointColorsFromHalfPlaneInclusions();
-
         UpdateHalfPlaneColorsFromPointInclusions();
+        //FindValidPartitionTriangles();
 
         // Reset highlights
         foreach (Point point in AllPoints)
@@ -653,8 +1068,8 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         UpdatePointColorsFromHalfPlaneInclusions();
-
         UpdateHalfPlaneColorsFromPointInclusions();
+        FindValidPartitionTriangles();
     }
 
     public void OnBeginDragPoint(PointerEventData eventData)
