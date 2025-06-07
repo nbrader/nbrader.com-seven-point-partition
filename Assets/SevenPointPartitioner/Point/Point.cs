@@ -7,7 +7,7 @@ public class Point : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHan
     public SevenPointPartitioner parentSevenPointPartitioner;
     public SpriteRenderer spriteRenderer;
     public Color normalColour = Color.red;
-    public Color highlightedColour = Color.yellow;
+    Color highlightedColour = Color.grey;
 
     public Vector3 Position { get { return transform.position; } set { transform.position = value; } }
 
@@ -28,6 +28,6 @@ public class Point : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHan
 
     public void Highlight(bool isHighlight)
     {
-        spriteRenderer.color = isHighlight ? highlightedColour : normalColour;
+        spriteRenderer.color = isHighlight ? (normalColour * 0.5f + highlightedColour * 0.5f) : normalColour;
     }
 }

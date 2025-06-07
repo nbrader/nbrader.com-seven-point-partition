@@ -9,6 +9,21 @@ public enum SevenPointPartitionerPartType
     Point = 0,
 }
 
+[System.Serializable]
+public struct HalfPlaneTriple
+{
+    public HalfPlane halfPlaneA;
+    public HalfPlane halfPlaneB;
+    public HalfPlane halfPlaneC;
+
+    public HalfPlaneTriple(HalfPlane a, HalfPlane b, HalfPlane c)
+    {
+        halfPlaneA = a;
+        halfPlaneB = b;
+        halfPlaneC = c;
+    }
+}
+
 public class SevenPointPartitioner : MonoBehaviour
 {
     public List<Point> points;
@@ -20,6 +35,24 @@ public class SevenPointPartitioner : MonoBehaviour
     float pointColliderThickness;
 
     List<HalfPlane> halfPlanes;
+
+    // Half-plane inclusion coloring
+    [Header("Half-Plane Inclusion Coloring")]
+    public HalfPlaneTriple coloringTriple;
+    public bool enableHalfPlaneColoring = true;
+
+    // Color mapping for the 8 possible combinations (false,false,false) to (true,true,true)
+    private static readonly Color[] inclusionColors = new Color[]
+    {
+        Color.grey,             // (false, false, false) = 000
+        Color.red,              // (true, false, false)  = 001
+        Color.green,            // (false, true, false)  = 010
+        Color.blue,             // (true, true, false)   = 011
+        Color.yellow,           // (false, false, true)  = 100
+        Color.magenta,          // (true, false, true)   = 101
+        Color.cyan,             // (false, true, true)   = 110
+        Color.white             // (true, true, true)    = 111
+    };
 
     private int? closestPointIndex;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
@@ -109,6 +142,11 @@ public class SevenPointPartitioner : MonoBehaviour
 
             debugHalfPlanes.Add(halfPlane);
         }
+
+        coloringTriple.halfPlaneA = debugHalfPlanes[0];
+        coloringTriple.halfPlaneB = debugHalfPlanes[1];
+        coloringTriple.halfPlaneC = debugHalfPlanes[2];
+        UpdatePointColorsFromHalfPlaneInclusions();
     }
 
     private void InitializeHalfPlanesFromPoints()
@@ -139,6 +177,82 @@ public class SevenPointPartitioner : MonoBehaviour
                     halfPlanes.Add(halfPlane);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Computes the half-plane inclusion for a given point and ordered triple of half-planes
+    /// </summary>
+    /// <param name="point">The point to test</param>
+    /// <param name="triple">The ordered triple of half-planes (h_a, h_b, h_c)</param>
+    /// <returns>A tuple (inA, inB, inC) indicating inclusion in each half-plane</returns>
+    public (bool inA, bool inB, bool inC) HalfPlaneInclusions(Vector2 point, HalfPlaneTriple triple)
+    {
+        bool inA = IsPointInHalfPlane(point, triple.halfPlaneA);
+        bool inB = IsPointInHalfPlane(point, triple.halfPlaneB);
+        bool inC = IsPointInHalfPlane(point, triple.halfPlaneC);
+
+        return (inA, inB, inC);
+    }
+
+    /// <summary>
+    /// Checks if a point is inside a half-plane (closed half-plane includes the boundary)
+    /// </summary>
+    /// <param name="point">The point to test</param>
+    /// <param name="halfPlane">The half-plane to test against</param>
+    /// <returns>True if the point is in the half-plane (including boundary)</returns>
+    private bool IsPointInHalfPlane(Vector2 point, HalfPlane halfPlane)
+    {
+        if (halfPlane == null || halfPlane.inputPoint1 == null || halfPlane.inputPoint2 == null)
+            return false;
+
+        Vector2 a = halfPlane.inputPoint1.position;
+        Vector2 b = halfPlane.inputPoint2.position;
+
+        // Calculate the cross product to determine which side of the line the point is on
+        // For a line from A to B, and point P:
+        // cross = (B.x - A.x) * (P.y - A.y) - (B.y - A.y) * (P.x - A.x)
+        // If cross >= 0, point is on the left side or on the line
+        // If cross < 0, point is on the right side
+        float cross = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x);
+
+        // For a closed half-plane, we include points on the boundary (cross == 0)
+        // The convention here assumes the half-plane is to the left of the directed line A->B
+        return cross >= 0;
+    }
+
+    /// <summary>
+    /// Maps a half-plane inclusion tuple to a color
+    /// </summary>
+    /// <param name="inclusions">The inclusion tuple (inA, inB, inC)</param>
+    /// <returns>The corresponding color</returns>
+    public Color GetColorFromInclusions((bool inA, bool inB, bool inC) inclusions)
+    {
+        // Convert boolean tuple to binary index: inA*4 + inB*2 + inC*1
+        int colorIndex = (inclusions.inA ? 4 : 0) + (inclusions.inB ? 2 : 0) + (inclusions.inC ? 1 : 0);
+        return inclusionColors[colorIndex];
+    }
+
+    /// <summary>
+    /// Updates the colors of all points based on their half-plane inclusions
+    /// </summary>
+    public void UpdatePointColorsFromHalfPlaneInclusions()
+    {
+        if (!enableHalfPlaneColoring ||
+            coloringTriple.halfPlaneA == null ||
+            coloringTriple.halfPlaneB == null ||
+            coloringTriple.halfPlaneC == null)
+        {
+            return;
+        }
+
+        foreach (Point point in points)
+        {
+            var inclusions = HalfPlaneInclusions(point.Position, coloringTriple);
+            Color newColor = GetColorFromInclusions(inclusions);
+
+            // Update the point's color (assuming Point has a color property)
+            point.normalColour = newColor;
         }
     }
 
@@ -217,6 +331,8 @@ public class SevenPointPartitioner : MonoBehaviour
     public void MovePoint(int pointIndex, Vector3 targetPosition)
     {
         points[pointIndex].Position = targetPosition;
+
+        UpdatePointColorsFromHalfPlaneInclusions();
     }
 
     public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
@@ -254,6 +370,15 @@ public class SevenPointPartitioner : MonoBehaviour
         {
             UpdateWarningDisplay();
         }
+
+        UpdatePointColorsFromHalfPlaneInclusions();
+
+        // Reset highlights
+        foreach (Point point in AllPoints)
+            point.Highlight(false);
+
+        if (closestPointIndexInAllPoints != null)
+            AllPoints[closestPointIndexInAllPoints.Value].Highlight(true);
 
         CheckForPossibleCentres();
 
@@ -302,13 +427,6 @@ public class SevenPointPartitioner : MonoBehaviour
             Camera.main.transform.position -= delta;
             lastMousePosition = Input.mousePosition;
         }
-
-        // Reset highlights
-        foreach (Point point in AllPoints)
-            point.Highlight(false);
-
-        if (closestPointIndexInAllPoints != null)
-            AllPoints[closestPointIndexInAllPoints.Value].Highlight(true);
     }
 
     private bool ShouldShowHalfPlane(Line halfPlane)
@@ -368,6 +486,8 @@ public class SevenPointPartitioner : MonoBehaviour
         {
             OnEndDragPoint(eventData);
         }
+
+        UpdatePointColorsFromHalfPlaneInclusions();
     }
 
     public void OnBeginDragPoint(PointerEventData eventData)
