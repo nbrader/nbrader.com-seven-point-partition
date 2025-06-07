@@ -41,6 +41,10 @@ public class SevenPointPartitioner : MonoBehaviour
     public HalfPlaneTriple coloringTriple;
     public bool enableHalfPlaneColoring = true;
 
+    // Point inclusion coloring for lines
+    [Header("Point Inclusion Line Coloring")]
+    public bool enablePointInclusionColoring = true;
+
     // Color mapping for the 8 possible combinations (false,false,false) to (true,true,true)
     private static readonly Color[] inclusionColors = new Color[]
     {
@@ -53,6 +57,10 @@ public class SevenPointPartitioner : MonoBehaviour
         Color.cyan,             // (false, true, true)   = 110
         Color.white             // (true, true, true)    = 111
     };
+
+    // Color mapping for 128 possible combinations of 7 points (2^7 = 128)
+    // We'll use a hash-based coloring system for the 128 combinations
+    private static readonly Color[] pointInclusionColors = GeneratePointInclusionColors();
 
     private int? closestPointIndex;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
@@ -181,6 +189,140 @@ public class SevenPointPartitioner : MonoBehaviour
     }
 
     /// <summary>
+    /// Generates a diverse set of colors for the 128 possible point inclusion combinations
+    /// </summary>
+    /// <returns>Array of 128 distinct colors</returns>
+    private static Color[] GeneratePointInclusionColors()
+    {
+        Color[] colors = new Color[128];
+
+        for (int i = 0; i < 128; i++)
+        {
+            // Use different approaches to generate visually distinct colors
+            // We'll use HSV color space for better distribution
+
+            // Method 1: Use bit patterns to influence hue, saturation, and value
+            float hue = (i * 137.508f) % 360f / 360f; // Golden angle for better distribution
+            float saturation = 0.6f + 0.4f * ((i % 3) / 2f); // Vary saturation
+            float value = 0.7f + 0.3f * ((i % 5) / 4f); // Vary brightness
+
+            colors[i] = Color.HSVToRGB(hue, saturation, value);
+        }
+
+        // Ensure some key combinations have recognizable colors
+        colors[0] = Color.black;    // No points included
+        colors[127] = Color.white;  // All points included
+
+        return colors;
+    }
+
+    /// <summary>
+    /// Computes the point inclusion for a given half-plane and the ordered set of 7 points
+    /// </summary>
+    /// <param name="halfPlane">The half-plane to test against</param>
+    /// <returns>A tuple of 7 booleans indicating inclusion for each point (p1, p2, p3, p4, p5, p6, p7)</returns>
+    public (bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) PointInclusions(HalfPlane halfPlane)
+    {
+        if (points.Count < 7)
+        {
+            Debug.LogWarning("PointInclusions requires exactly 7 points, but only " + points.Count + " are available.");
+            return (false, false, false, false, false, false, false);
+        }
+
+        bool p1 = IsPointInHalfPlaneRight(points[0].Position, halfPlane);
+        bool p2 = IsPointInHalfPlaneRight(points[1].Position, halfPlane);
+        bool p3 = IsPointInHalfPlaneRight(points[2].Position, halfPlane);
+        bool p4 = IsPointInHalfPlaneRight(points[3].Position, halfPlane);
+        bool p5 = IsPointInHalfPlaneRight(points[4].Position, halfPlane);
+        bool p6 = IsPointInHalfPlaneRight(points[5].Position, halfPlane);
+        bool p7 = IsPointInHalfPlaneRight(points[6].Position, halfPlane);
+
+        return (p1, p2, p3, p4, p5, p6, p7);
+    }
+
+    /// <summary>
+    /// Checks if a point is in the right half-plane of a line (including the line itself)
+    /// "Right" is defined by treating the second point as the "forward" direction from the first
+    /// </summary>
+    /// <param name="point">The point to test</param>
+    /// <param name="halfPlane">The half-plane defined by two points</param>
+    /// <returns>True if the point is on the right side of the line or on the line</returns>
+    private bool IsPointInHalfPlaneRight(Vector2 point, HalfPlane halfPlane)
+    {
+        if (halfPlane == null || halfPlane.inputPoint1 == null || halfPlane.inputPoint2 == null)
+            return false;
+
+        Vector2 a = halfPlane.inputPoint1.position; // First point
+        Vector2 b = halfPlane.inputPoint2.position; // Second point (defines "forward")
+
+        // Calculate the cross product to determine which side of the line the point is on
+        // For a line from A to B, and point P:
+        // cross = (B.x - A.x) * (P.y - A.y) - (B.y - A.y) * (P.x - A.x)
+        // If cross <= 0, point is on the right side or on the line (when looking from A towards B)
+        // If cross > 0, point is on the left side
+        float cross = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x);
+
+        // For the right half-plane (including boundary), we want cross <= 0
+        return cross <= 0;
+    }
+
+    /// <summary>
+    /// Maps a point inclusion tuple to a color using the 7-point inclusion system
+    /// </summary>
+    /// <param name="inclusions">The inclusion tuple for 7 points</param>
+    /// <returns>The corresponding color</returns>
+    public Color GetColorFromPointInclusions((bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) inclusions)
+    {
+        // Convert boolean tuple to binary index
+        int colorIndex = 0;
+        if (inclusions.p1) colorIndex |= 1;
+        if (inclusions.p2) colorIndex |= 2;
+        if (inclusions.p3) colorIndex |= 4;
+        if (inclusions.p4) colorIndex |= 8;
+        if (inclusions.p5) colorIndex |= 16;
+        if (inclusions.p6) colorIndex |= 32;
+        if (inclusions.p7) colorIndex |= 64;
+
+        return pointInclusionColors[colorIndex];
+    }
+
+    /// <summary>
+    /// Updates the colors of all half-planes based on their point inclusions
+    /// </summary>
+    public void UpdateHalfPlaneColorsFromPointInclusions()
+    {
+        if (!enablePointInclusionColoring || points.Count < 7)
+        {
+            return;
+        }
+
+        // Update colors for main half-planes
+        foreach (HalfPlane halfPlane in halfPlanes)
+        {
+            var inclusions = PointInclusions(halfPlane);
+            Color newColor = GetColorFromPointInclusions(inclusions);
+
+            // Set alpha to make the half-planes semi-transparent
+            newColor.a = 0.3f;
+            halfPlane.colour = newColor;
+        }
+
+        // Update colors for debug half-planes if they exist
+        if (debugHalfPlanes != null)
+        {
+            foreach (HalfPlane halfPlane in debugHalfPlanes)
+            {
+                var inclusions = PointInclusions(halfPlane);
+                Color newColor = GetColorFromPointInclusions(inclusions);
+
+                // Keep debug half-planes more opaque
+                newColor.a = 0.7f;
+                halfPlane.colour = newColor;
+            }
+        }
+    }
+
+    /// <summary>
     /// Computes the half-plane inclusion for a given point and ordered triple of half-planes
     /// </summary>
     /// <param name="point">The point to test</param>
@@ -197,6 +339,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
     /// <summary>
     /// Checks if a point is inside a half-plane (closed half-plane includes the boundary)
+    /// This version uses left-side inclusion for the original half-plane coloring system
     /// </summary>
     /// <param name="point">The point to test</param>
     /// <param name="halfPlane">The half-plane to test against</param>
@@ -332,7 +475,16 @@ public class SevenPointPartitioner : MonoBehaviour
     {
         points[pointIndex].Position = targetPosition;
 
-        UpdatePointColorsFromHalfPlaneInclusions();
+        // Update colors when points move
+        if (enableHalfPlaneColoring)
+        {
+            UpdatePointColorsFromHalfPlaneInclusions();
+        }
+
+        if (enablePointInclusionColoring)
+        {
+            UpdateHalfPlaneColorsFromPointInclusions();
+        }
     }
 
     public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
@@ -372,6 +524,8 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         UpdatePointColorsFromHalfPlaneInclusions();
+
+        UpdateHalfPlaneColorsFromPointInclusions();
 
         // Reset highlights
         foreach (Point point in AllPoints)
@@ -427,6 +581,13 @@ public class SevenPointPartitioner : MonoBehaviour
             Camera.main.transform.position -= delta;
             lastMousePosition = Input.mousePosition;
         }
+
+        // Reset highlights
+        foreach (Point point in AllPoints)
+            point.Highlight(false);
+
+        if (closestPointIndexInAllPoints != null)
+            AllPoints[closestPointIndexInAllPoints.Value].Highlight(true);
     }
 
     private bool ShouldShowHalfPlane(Line halfPlane)
@@ -488,6 +649,8 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         UpdatePointColorsFromHalfPlaneInclusions();
+
+        UpdateHalfPlaneColorsFromPointInclusions();
     }
 
     public void OnBeginDragPoint(PointerEventData eventData)
