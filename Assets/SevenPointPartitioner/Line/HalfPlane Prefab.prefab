@@ -322,7 +322,7 @@ MonoBehaviour:
   arrowTransform: {fileID: 3545483939164311324}
   arrowSpriteRenderer: {fileID: 5551144815020144648}
   interiorOnLeft: 1
-  arrowBaseSize: 0.2
+  arrowBaseSize: 0.1
   arrowDistance: 0
 --- !u!1 &6679173649938509692
 GameObject:
