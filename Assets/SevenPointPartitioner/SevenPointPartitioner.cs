@@ -12,12 +12,12 @@ public class SevenPointPartitioner : MonoBehaviour
 {
     public List<Point> points;
 
-    public GameObject linePrefab;
+    public GameObject halfPlanePrefab;
     public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f;
     float pointColliderThickness;
 
-    List<Line> lines;
+    List<HalfPlane> halfPlanes;
 
     private int? closestPointIndex;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
@@ -27,8 +27,8 @@ public class SevenPointPartitioner : MonoBehaviour
     private Vector3 lastMousePosition;
 
     private List<Point> AllPoints => points
-    .Concat(debugLinePairs.Select(p => p.pointA))
-    .Concat(debugLinePairs.Select(p => p.pointB))
+    .Concat(debugHalfPlanePairs.Select(p => p.pointA))
+    .Concat(debugHalfPlanePairs.Select(p => p.pointB))
     .Where(p => p != null)
     .Distinct()
     .ToList();
@@ -40,8 +40,8 @@ public class SevenPointPartitioner : MonoBehaviour
             point.parentSevenPointPartitioner = this;
         }
 
-        // Also set the parent for points used only in debugLinePairs
-        foreach (var pair in debugLinePairs)
+        // Also set the parent for points used only in debugHalfPlanePairs
+        foreach (var pair in debugHalfPlanePairs)
         {
             if (pair.pointA != null && !points.Contains(pair.pointA))
                 pair.pointA.parentSevenPointPartitioner = this;
@@ -53,12 +53,12 @@ public class SevenPointPartitioner : MonoBehaviour
             pair.pointB.normalColour = Color.white;
         }
 
-        InitializeLinesFromPoints();
-        InitializeDebugLines();
+        InitializeHalfPlanesFromPoints();
+        InitializeDebugHalfPlanes();
         UpdateSelectionRadius();
     }
 
-    List<Line> debugLines;
+    List<HalfPlane> debugHalfPlanes;
 
     private static readonly Color[] debugColors = new Color[]
     {
@@ -79,59 +79,62 @@ public class SevenPointPartitioner : MonoBehaviour
         public Point pointB;
     }
 
-    public List<PointPair> debugLinePairs;
+    public List<PointPair> debugHalfPlanePairs;
 
-    private void InitializeDebugLines()
+    private void InitializeDebugHalfPlanes()
     {
-        debugLines = new List<Line>();
+        debugHalfPlanes = new List<HalfPlane>();
         int colorIndex = 0;
 
-        foreach (var pair in debugLinePairs)
+        foreach (var pair in debugHalfPlanePairs)
         {
             if (pair.pointA == null || pair.pointB == null) continue;
 
-            GameObject lineObj = Instantiate(linePrefab, Vector3.zero, Quaternion.identity);
-            Line line = lineObj.GetComponent<Line>();
+            GameObject halfPlaneObj = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
+            HalfPlane halfPlane = halfPlaneObj.GetComponent<HalfPlane>();
 
-            line.inputPoint1 = pair.pointA.transform;
-            line.inputPoint2 = pair.pointB.transform;
-            line.parentSevenPointPartitioner = this;
+            halfPlane.inputPoint1 = pair.pointA.transform;
+            halfPlane.inputPoint2 = pair.pointB.transform;
+            halfPlane.parentSevenPointPartitioner = this;
 
             Color debugColor = debugColors[colorIndex % debugColors.Length];
             debugColor.a = 0.9f;
-            line.colour = debugColor;
+            halfPlane.colour = debugColor;
             colorIndex++;
 
-            line.ShouldBeVisible += _ => true;
+            halfPlane.ShouldBeVisible += _ => true;
 
-            debugLines.Add(line);
+            debugHalfPlanes.Add(halfPlane);
         }
     }
 
-    private void InitializeLinesFromPoints()
+    private void InitializeHalfPlanesFromPoints()
     {
-        lines = new List<Line>();
+        halfPlanes = new List<HalfPlane>();
 
         for (int i = 0; i < points.Count; i++)
         {
-            for (int j = i + 1; j < points.Count; j++)
+            for (int j = 0; j < points.Count; j++)
             {
-                GameObject lineObj = Instantiate(linePrefab, Vector3.zero, Quaternion.identity);
-                Line line = lineObj.GetComponent<Line>();
+                if (i != j)
+                {
+                    GameObject halfPlaneObj = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
+                    HalfPlane halfPlane = halfPlaneObj.GetComponent<HalfPlane>();
 
-                line.inputPoint1 = points[i].transform;
-                line.inputPoint2 = points[j].transform;
-                line.parentSevenPointPartitioner = this;
+                    halfPlane.inputPoint1 = points[i].transform;
+                    halfPlane.inputPoint2 = points[j].transform;
+                    halfPlane.parentSevenPointPartitioner = this;
 
-                // Assign debug color
-                Color color = Color.green;
-                color.a = 0.18f;
-                line.colour = color;
+                    // Assign debug color
+                    Color color = Color.green;
+                    color.a = 0.18f;
+                    halfPlane.colour = color;
 
-                // Register visibility rule
-                line.ShouldBeVisible += ShouldShowLine;
+                    // Register visibility rule
+                    halfPlane.ShouldBeVisible += ShouldShowHalfPlane;
 
-                lines.Add(line);
+                    halfPlanes.Add(halfPlane);
+                }
             }
         }
     }
@@ -243,24 +246,24 @@ public class SevenPointPartitioner : MonoBehaviour
             AllPoints[closestPointIndexInAllPoints.Value].Highlight(true);
     }
 
-    private bool ShouldShowLine(Line line)
+    private bool ShouldShowHalfPlane(Line halfPlane)
     {
-        Vector2 a = line.inputPoint1.position;
-        Vector2 b = line.inputPoint2.position;
+        Vector2 a = halfPlane.inputPoint1.position;
+        Vector2 b = halfPlane.inputPoint2.position;
 
         int leftCount = 0;
         int rightCount = 0;
 
         foreach (Point p in points)
         {
-            if (p.transform == line.inputPoint1 || p.transform == line.inputPoint2)
+            if (p.transform == halfPlane.inputPoint1 || p.transform == halfPlane.inputPoint2)
                 continue;
 
             Vector2 pt = p.transform.position;
             float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
 
             if (Mathf.Approximately(cross, 0f))
-                continue; // Point is on the line
+                continue; // Point is on the halfPlane
 
             if (cross > 0)
                 leftCount++;
@@ -269,7 +272,7 @@ public class SevenPointPartitioner : MonoBehaviour
                 rightCount++;
         }
 
-        return (leftCount == 2 && rightCount == 3) || (leftCount == 3 && rightCount == 2) || (leftCount == 1 && rightCount == 4) || (leftCount == 4 && rightCount == 1);
+        return (leftCount == 3 && rightCount == 2) || (leftCount == 4 && rightCount == 1);
     }
 
     public void OnBeginDrag(PointerEventData eventData)

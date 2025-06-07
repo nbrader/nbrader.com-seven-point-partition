@@ -2089,8 +2089,8 @@ MonoBehaviour:
   - {fileID: 1572092105}
   - {fileID: 1468947146}
   - {fileID: 827683305}
-  linePrefab: {fileID: 3839745485931276093, guid: ce9a03662fb51d349a1f7a2a5850e197, type: 3}
-  debugLinePairs:
+  halfPlanePrefab: {fileID: 3839745485931276093, guid: e0369a907984692419a29e4a57238b49, type: 3}
+  debugHalfPlanePairs:
   - pointA: {fileID: 152839438}
     pointB: {fileID: 1534003469}
   - pointA: {fileID: 1073678189}

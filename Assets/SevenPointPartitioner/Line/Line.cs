@@ -26,10 +26,12 @@ public class Line : MonoBehaviour
     public bool IsVisible
     {
         get => spriteRenderer.enabled;
-        private set => spriteRenderer.enabled = value;
+        private set => SetVisibility(value);
     }
 
-    private void Update()
+    public virtual void SetVisibility(bool targetVisibility) { spriteRenderer.enabled = targetVisibility; }
+
+    protected void Update()
     {
         UpdateLineEndpoints();
 
@@ -89,9 +91,6 @@ public class Line : MonoBehaviour
         float camHeight = 2f * cam.orthographicSize;
         float camWidth = camHeight * cam.aspect;
         Vector2 camCenter = cam.transform.position;
-
-        camWidth *= 2f;
-        camHeight *= 2f;
 
         float left = camCenter.x - camWidth / 2f;
         float right = camCenter.x + camWidth / 2f;
