@@ -476,15 +476,8 @@ public class SevenPointPartitioner : MonoBehaviour
         points[pointIndex].Position = targetPosition;
 
         // Update colors when points move
-        if (enableHalfPlaneColoring)
-        {
-            UpdatePointColorsFromHalfPlaneInclusions();
-        }
-
-        if (enablePointInclusionColoring)
-        {
-            UpdateHalfPlaneColorsFromPointInclusions();
-        }
+        UpdatePointColorsFromHalfPlaneInclusions();
+        UpdateHalfPlaneColorsFromPointInclusions();
     }
 
     public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
