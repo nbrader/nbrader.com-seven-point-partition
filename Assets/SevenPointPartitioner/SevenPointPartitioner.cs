@@ -54,8 +54,18 @@ public class SevenPointPartitioner : MonoBehaviour
     public bool showValidPartitionTriangles = true;
     public float validTriangleThickness = 0.3f;
 
+    // Triangle cycling parameters
+    [Header("Triangle Cycling")]
+    [Tooltip("Time in seconds to display each solution triangle")]
+    float triangleCycleDuration = 1.0f;
+
     private List<HalfPlaneTriple> validPartitionTriangles = new List<HalfPlaneTriple>();
     private List<Color> triangleColors = new List<Color>();
+
+    // Triangle cycling variables
+    private int currentTriangleIndex = 0;
+    private float triangleCycleTimer = 0f;
+    private bool hasValidTriangles = false;
 
     // Color mapping for the 8 possible combinations (false,false,false) to (true,true,true)
     private static readonly Color[] inclusionColors = new Color[]
@@ -129,6 +139,7 @@ public class SevenPointPartitioner : MonoBehaviour
         InitializeHalfPlanesFromPoints();
         InitializeDebugHalfPlanes();
         UpdateSelectionRadius();
+        FindValidPartitionTriangles();
     }
 
     List<HalfPlane> debugHalfPlanes;
@@ -228,7 +239,10 @@ public class SevenPointPartitioner : MonoBehaviour
         triangleColors.Clear();
 
         if (points.Count != 7 || hasCollinearPoints)
+        {
+            hasValidTriangles = false;
             return;
+        }
 
         // Step 1: Find all qualifying lines (2-3 or 1-4 splits, nudged to 3-4 splits)
         List<HalfPlane> qualifyingLines = new List<HalfPlane>();
@@ -240,8 +254,6 @@ public class SevenPointPartitioner : MonoBehaviour
                 qualifyingLines.Add(halfPlane);
             }
         }
-
-        //Debug.Log($"Found {qualifyingLines.Count} qualifying lines");
 
         // Step 2: Find valid pairs that satisfy LEMMA 2
         List<(HalfPlane, HalfPlane)> validPairs = new List<(HalfPlane, HalfPlane)>();
@@ -256,8 +268,6 @@ public class SevenPointPartitioner : MonoBehaviour
                 }
             }
         }
-
-        //Debug.Log($"Found {validPairs.Count} valid pairs satisfying LEMMA 2");
 
         // Step 3: Find triples where every pair is valid and instantiate triangle half-planes
         int colorIndex = 0;
@@ -298,8 +308,6 @@ public class SevenPointPartitioner : MonoBehaviour
                             Color triangleColor = validTriangleColors[colorIndex % validTriangleColors.Length];
                             triangleColors.Add(triangleColor);
 
-                            //Debug.Log($"Valid partition triangle found: Lines {GetLineDescription(line1)}, {GetLineDescription(line2)}, {GetLineDescription(line3)}");
-
                             colorIndex++;
                         }
                     }
@@ -307,7 +315,52 @@ public class SevenPointPartitioner : MonoBehaviour
             }
         }
 
-        //Debug.Log($"Found {validTripleCount} valid triples, {validPartitionTriangles.Count} create unique partitions");
+        // Update triangle cycling state
+        hasValidTriangles = validPartitionTriangles.Count > 0;
+        if (hasValidTriangles)
+        {
+            currentTriangleIndex = 0;
+            triangleCycleTimer = 0f;
+        }
+
+        // Initial visibility setup
+        UpdateTriangleVisibility();
+    }
+
+    /// <summary>
+    /// Updates the visibility of triangles based on cycling
+    /// </summary>
+    private void UpdateTriangleVisibility()
+    {
+        if (!hasValidTriangles || validPartitionTriangles.Count == 0)
+            return;
+
+        // Hide all triangles first
+        for (int i = 0; i < validPartitionTriangles.Count; i++)
+        {
+            var triangle = validPartitionTriangles[i];
+            SetTriangleVisibility(triangle, false);
+        }
+
+        // Show only the current triangle
+        if (currentTriangleIndex < validPartitionTriangles.Count)
+        {
+            var currentTriangle = validPartitionTriangles[currentTriangleIndex];
+            SetTriangleVisibility(currentTriangle, true);
+        }
+    }
+
+    /// <summary>
+    /// Sets the visibility of a specific triangle
+    /// </summary>
+    private void SetTriangleVisibility(HalfPlaneTriple triangle, bool visible)
+    {
+        if (triangle.halfPlaneA != null)
+            triangle.halfPlaneA.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
+        if (triangle.halfPlaneB != null)
+            triangle.halfPlaneB.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
+        if (triangle.halfPlaneC != null)
+            triangle.halfPlaneC.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
     }
 
     /// <summary>
@@ -451,11 +504,6 @@ public class SevenPointPartitioner : MonoBehaviour
         // Should have exactly 7 unique partitions for 7 points (1/1/1/1/1/1/1)
         bool isUnique = partitionCodes.Count == 7;
 
-        //if (isUnique)
-        //{
-        //    Debug.Log($"Unique partition found with codes: [{string.Join(", ", partitionCodes.OrderBy(x => x))}]");
-        //}
-
         return isUnique;
     }
 
@@ -567,8 +615,8 @@ public class SevenPointPartitioner : MonoBehaviour
         halfPlane.colour = triangleColor;
         halfPlane.Thickness = validTriangleThickness;
 
-        // Set visibility rules - show only when valid triangles should be shown and no collinear points
-        halfPlane.ShouldBeVisible += _ => showValidPartitionTriangles && !hasCollinearPoints;
+        // Triangle visibility will be controlled by the cycling system
+        halfPlane.ShouldBeVisible += _ => true; // Always allow visibility (controlled by SetActive)
         halfPlane.ForceHidden += _ => false; // Don't force hide triangle lines
     }
 
@@ -999,6 +1047,19 @@ public class SevenPointPartitioner : MonoBehaviour
             Vector3 delta = Camera.main.ScreenToWorldPoint(Input.mousePosition) - Camera.main.ScreenToWorldPoint(lastMousePosition);
             Camera.main.transform.position -= delta;
             lastMousePosition = Input.mousePosition;
+        }
+
+        // Handle triangle cycling
+        if (hasValidTriangles && validPartitionTriangles.Count > 1)
+        {
+            triangleCycleTimer += Time.deltaTime;
+
+            if (triangleCycleTimer >= triangleCycleDuration)
+            {
+                triangleCycleTimer = 0f;
+                currentTriangleIndex = (currentTriangleIndex + 1) % validPartitionTriangles.Count;
+                UpdateTriangleVisibility();
+            }
         }
 
         // Reset highlights
