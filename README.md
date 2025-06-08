@@ -9,9 +9,10 @@ Drag points to explore configurations where such a partition is possible.
 
 ## Controls
 
-- **Drag Point** – Move a point
-- **Drag Background** – Pan camera
-- **Scroll on Background** – Zoom
+- **Drag Point** - Move a point
+- **Drag Background** - Pan camera
+- **Scroll on Background** - Zoom
+- **Space Bar** - Show/Hide Candidate Partitions
 
 ## Try It Online
 
