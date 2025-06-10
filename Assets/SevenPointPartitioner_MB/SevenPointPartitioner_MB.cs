@@ -59,7 +59,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     readonly float validTriangleThickness = 0.1f;
 
     private readonly List<HalfPlaneTriple> validPartitionTriangles = new();
-    private readonly List<Color> triangleColors = new();
 
     // Triangle cycling variables
     private int currentTriangleIndex = 0;
@@ -157,7 +156,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     private void FindValidPartitionTriangles()
     {
         validPartitionTriangles.Clear();
-        triangleColors.Clear();
 
         if (points.Count != 7 || hasCollinearPoints)
         {
@@ -191,7 +189,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
 
         // Step 3: Find triples where every pair is valid and instantiate triangle half-planes
-        int colorIndex = 0;
         int validTripleCount = 0;
 
         // Clean up any previously created triangle half-planes
@@ -220,16 +217,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                         if (CreatesUniquePartitions(line1, line2, line3))
                         {
                             // Create new half-plane instances for this triangle
-                            var triangleHalfPlanes = CreateTriangleHalfPlanes(line1, line2, line3, colorIndex);
+                            var triangleHalfPlanes = CreateTriangleHalfPlanes(line1, line2, line3);
 
                             var triple = new HalfPlaneTriple(triangleHalfPlanes.line1, triangleHalfPlanes.line2, triangleHalfPlanes.line3);
                             validPartitionTriangles.Add(triple);
-
-                            // Assign unique color to this triangle
-                            Color triangleColor = validTriangleColors[colorIndex % validTriangleColors.Length];
-                            triangleColors.Add(triangleColor);
-
-                            colorIndex++;
                         }
                     }
                 }
@@ -477,24 +468,28 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// <param name="colorIndex">Index for triangle color</param>
     /// <returns>Tuple of the three new half-plane instances</returns>
     private (HalfPlane_MB line1, HalfPlane_MB line2, HalfPlane_MB line3) CreateTriangleHalfPlanes(
-        HalfPlane_MB originalLine1, HalfPlane_MB originalLine2, HalfPlane_MB originalLine3, int colorIndex)
+        HalfPlane_MB originalLine1, HalfPlane_MB originalLine2, HalfPlane_MB originalLine3)
     {
-        Color triangleColor = validTriangleColors[colorIndex % validTriangleColors.Length];
-
         // Create first half-plane
         GameObject halfPlaneObj1 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
         HalfPlane_MB halfPlane1 = halfPlaneObj1.GetComponent<HalfPlane_MB>();
-        SetupTriangleHalfPlane(halfPlane1, originalLine1, triangleColor);
+        var inclusions1 = PointInclusions(originalLine1);
+        Color newColor1 = GetColorFromPointInclusions(inclusions1);
+        SetupTriangleHalfPlane(halfPlane1, originalLine1, newColor1);
 
         // Create second half-plane
         GameObject halfPlaneObj2 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
         HalfPlane_MB halfPlane2 = halfPlaneObj2.GetComponent<HalfPlane_MB>();
-        SetupTriangleHalfPlane(halfPlane2, originalLine2, triangleColor);
+        var inclusions2 = PointInclusions(originalLine2);
+        Color newColor2 = GetColorFromPointInclusions(inclusions2);
+        SetupTriangleHalfPlane(halfPlane2, originalLine2, newColor2);
 
         // Create third half-plane
         GameObject halfPlaneObj3 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
         HalfPlane_MB halfPlane3 = halfPlaneObj3.GetComponent<HalfPlane_MB>();
-        SetupTriangleHalfPlane(halfPlane3, originalLine3, triangleColor);
+        var inclusions3 = PointInclusions(originalLine3);
+        Color newColor3 = GetColorFromPointInclusions(inclusions3);
+        SetupTriangleHalfPlane(halfPlane3, originalLine3, newColor3);
 
         // Add to our tracking list for cleanup
         triangleHalfPlanes.Add(halfPlane1);
@@ -509,8 +504,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// </summary>
     /// <param name="halfPlane">The half-plane to configure</param>
     /// <param name="originalLine">The original line to copy configuration from</param>
-    /// <param name="triangleColor">The color for this triangle</param>
-    private void SetupTriangleHalfPlane(HalfPlane_MB halfPlane, HalfPlane_MB originalLine, Color triangleColor)
+    /// <param name="color">The color for this triangle</param>
+    private void SetupTriangleHalfPlane(HalfPlane_MB halfPlane, HalfPlane_MB originalLine, Color color)
     {
         // Copy the endpoints from the original line
         halfPlane.inputPoint1 = originalLine.inputPoint1;
@@ -518,7 +513,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         halfPlane.parentSevenPointPartitioner = this;
 
         // Set visual properties for triangle display
-        halfPlane.colour = triangleColor;
+        halfPlane.colour = color;
         halfPlane.Thickness = validTriangleThickness;
 
         // Triangle visibility will be controlled by the cycling system
@@ -660,24 +655,15 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         // Update colors for main half-planes (skip those that are part of valid triangles)
         foreach (HalfPlane_MB halfPlane in halfPlanes)
         {
-            // Check if this half-plane is part of a valid triangle
-            bool isPartOfValidTriangle = validPartitionTriangles.Any(triangle =>
-                triangle.halfPlaneA == halfPlane ||
-                triangle.halfPlaneB == halfPlane ||
-                triangle.halfPlaneC == halfPlane);
+            var inclusions = PointInclusions(halfPlane);
+            Color newColor = GetColorFromPointInclusions(inclusions);
 
-            if (!isPartOfValidTriangle)
-            {
-                var inclusions = PointInclusions(halfPlane);
-                Color newColor = GetColorFromPointInclusions(inclusions);
+            // Set alpha to make the half-planes semi-transparent
+            newColor.a = 0.3f;
+            halfPlane.colour = newColor;
 
-                // Set alpha to make the half-planes semi-transparent
-                newColor.a = 0.3f;
-                halfPlane.colour = newColor;
-
-                // Reset thickness for non-triangle lines
-                halfPlane.Thickness = -1f; // Use default thickness
-            }
+            // Reset thickness for non-triangle lines
+            halfPlane.Thickness = -1f; // Use default thickness
         }
     }
 
@@ -733,29 +719,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         // Convert boolean tuple to binary index: inA*4 + inB*2 + inC*1
         int colorIndex = (inclusions.inA ? 4 : 0) + (inclusions.inB ? 2 : 0) + (inclusions.inC ? 1 : 0);
         return inclusionColors[colorIndex];
-    }
-
-    /// <summary>
-    /// Updates the colors of all points based on their half-plane inclusions
-    /// </summary>
-    public void UpdatePointColorsFromHalfPlaneInclusions()
-    {
-        if (!enableHalfPlaneColoring ||
-            coloringTriple.halfPlaneA == null ||
-            coloringTriple.halfPlaneB == null ||
-            coloringTriple.halfPlaneC == null)
-        {
-            return;
-        }
-
-        foreach (Point_MB point in points)
-        {
-            var inclusions = HalfPlaneInclusions(point.Position, coloringTriple);
-            Color newColor = GetColorFromInclusions(inclusions);
-
-            // Update the point's color (assuming Point has a color property)
-            point.normalColour = newColor;
-        }
     }
 
     private bool CheckForCollinearPoints()
@@ -1006,8 +969,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             OnEndDragPoint(eventData);
         }
 
-        //UpdatePointColorsFromHalfPlaneInclusions();
-        //UpdateHalfPlaneColorsFromPointInclusions();
         FindValidPartitionTriangles();
     }
 
