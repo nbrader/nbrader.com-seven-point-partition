@@ -56,10 +56,10 @@ public class SevenPointPartitioner : MonoBehaviour
     // Valid partition triangles
     [Header("Valid Partition Triangles")]
     public bool showValidPartitionTriangles = true;
-    float validTriangleThickness = 0.1f;
+    readonly float validTriangleThickness = 0.1f;
 
-    private List<HalfPlaneTriple> validPartitionTriangles = new List<HalfPlaneTriple>();
-    private List<Color> triangleColors = new List<Color>();
+    private readonly List<HalfPlaneTriple> validPartitionTriangles = new();
+    private readonly List<Color> triangleColors = new();
 
     // Triangle cycling variables
     private int currentTriangleIndex = 0;
@@ -99,7 +99,6 @@ public class SevenPointPartitioner : MonoBehaviour
         new Color(0f, 0.5f, 1f, 0.8f),    // Azure
     };
 
-    private int? closestPointIndex;
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
     private bool isDragging = false;
     private bool isCameraDragging = false;
@@ -167,7 +166,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Step 1: Find all qualifying lines (2-3 or 1-4 splits, nudged to 3-4 splits)
-        List<HalfPlane> qualifyingLines = new List<HalfPlane>();
+        List<HalfPlane> qualifyingLines = new();
 
         foreach (var halfPlane in halfPlanes)
         {
@@ -178,7 +177,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Step 2: Find valid pairs that satisfy LEMMA 2
-        List<(HalfPlane, HalfPlane)> validPairs = new List<(HalfPlane, HalfPlane)>();
+        List<(HalfPlane, HalfPlane)> validPairs = new();
 
         for (int i = 0; i < qualifyingLines.Count; i++)
         {
@@ -337,9 +336,6 @@ public class SevenPointPartitioner : MonoBehaviour
         // Case 3: Account for nudging - if we have points on the line, they can be moved to create valid splits
         else if (onLineCount > 0)
         {
-            // Try moving points on the line to each side and see if we get a valid split
-            int totalPoints = leftCount + rightCount + onLineCount;
-
             // Check if moving all points on line to left side gives 2-3 or 1-4 split
             int newLeftCount = leftCount + onLineCount;
             int newRightCount = rightCount;
@@ -382,8 +378,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
         // For now, we'll use a basic heuristic: the lines should intersect within a reasonable region
         // and create meaningful partitions
-        Vector2 intersection;
-        if (GetLineIntersection(line1, line2, out intersection))
+        if (GetLineIntersection(line1, line2, out Vector2 intersection))
         {
             // Check if intersection is reasonable (not too far from the point cloud)
             float maxDistance = GetMaxDistanceFromOrigin() * 2; // Reasonable bounds
@@ -399,7 +394,7 @@ public class SevenPointPartitioner : MonoBehaviour
     /// </summary>
     private bool CreatesUniquePartitions(HalfPlane line1, HalfPlane line2, HalfPlane line3)
     {
-        HashSet<int> partitionCodes = new HashSet<int>();
+        HashSet<int> partitionCodes = new();
 
         foreach (Point point in points)
         {
@@ -470,18 +465,8 @@ public class SevenPointPartitioner : MonoBehaviour
         return maxDist;
     }
 
-    /// <summary>
-    /// Helper method to get a description of a line for debugging
-    /// </summary>
-    private string GetLineDescription(HalfPlane line)
-    {
-        int index1 = points.FindIndex(p => p.transform == line.inputPoint1);
-        int index2 = points.FindIndex(p => p.transform == line.inputPoint2);
-        return $"P{index1}-P{index2}";
-    }
-
     // List to keep track of instantiated triangle half-planes for cleanup
-    private List<HalfPlane> triangleHalfPlanes = new List<HalfPlane>();
+    private readonly List<HalfPlane> triangleHalfPlanes = new();
 
     /// <summary>
     /// Creates new half-plane instances for a triangle with proper visual styling
@@ -902,12 +887,12 @@ public class SevenPointPartitioner : MonoBehaviour
 
         var pointerPos = Camera.main.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
 
-        var closestPointData = FindClosestPoint(pointerPos);
-        closestPointIndexInAllPoints = closestPointData.closestPoint;
+        var (closestPoint, closestDistance) = FindClosestPoint(pointerPos);
+        closestPointIndexInAllPoints = closestPoint;
 
-        if (closestPointData.closestDistance < pointColliderThickness)
+        if (closestDistance < pointColliderThickness)
         {
-            closestPointIndexInAllPoints = closestPointData.closestPoint;
+            closestPointIndexInAllPoints = closestPoint;
         }
         else
         {
@@ -926,7 +911,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Handle camera dragging
-        if (Input.GetMouseButtonDown(0) && closestPointIndex == null)
+        if (Input.GetMouseButtonDown(0))
         {
             isCameraDragging = true;
             lastMousePosition = Input.mousePosition;
@@ -1049,7 +1034,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
     private Vector3 ScreenToWorldPoint(Vector2 screenPosition)
     {
-        Vector3 screenPoint = new Vector3(screenPosition.x, screenPosition.y, -Camera.main.transform.position.z);
+        Vector3 screenPoint = new(screenPosition.x, screenPosition.y, -Camera.main.transform.position.z);
         return Camera.main.ScreenToWorldPoint(screenPoint);
     }
 
