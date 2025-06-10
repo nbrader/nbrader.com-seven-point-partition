@@ -49,7 +49,7 @@ public class HalfPlane : Line
         Vector2 lineDirection = (endPoint2.position - endPoint1.position).normalized;
 
         // Calculate perpendicular direction (90 degrees to the line)
-        Vector2 perpendicular = new Vector2(-lineDirection.y, lineDirection.x);
+        Vector2 perpendicular = new(-lineDirection.y, lineDirection.x);
 
         // Flip direction if interior is on the right side
         if (!interiorOnLeft)
@@ -111,7 +111,7 @@ public class HalfPlane : Line
         Vector2 lineDirection = (p2 - p1).normalized;
 
         // Calculate perpendicular (90 degrees counterclockwise)
-        Vector2 perpendicular = new Vector2(-lineDirection.y, lineDirection.x);
+        Vector2 perpendicular = new(-lineDirection.y, lineDirection.x);
 
         // Return based on which side is interior
         return interiorOnLeft ? perpendicular : -perpendicular;
@@ -135,7 +135,7 @@ public class HalfPlane : Line
         Vector2 pointToP1 = point - p1;
 
         // Project onto perpendicular to get signed distance
-        Vector2 perpendicular = new Vector2(-lineDir.y, lineDir.x);
+        Vector2 perpendicular = new(-lineDir.y, lineDir.x);
         if (!interiorOnLeft)
             perpendicular = -perpendicular;
 

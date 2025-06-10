@@ -47,8 +47,7 @@ public class Line : MonoBehaviour
         float degrees = Maths.Rad2Deg(Maths.AngleFromVec2(disp));
         float dist = disp.magnitude;
 
-        lineTransform.position = endPoint1.position;
-        lineTransform.rotation = Quaternion.Euler(0f, 0f, degrees);
+        lineTransform.SetPositionAndRotation(endPoint1.position, Quaternion.Euler(0f, 0f, degrees));
         lineTransform.localScale = new Vector3(dist, Thickness, 1);
 
         spriteRenderer.color = colour;
