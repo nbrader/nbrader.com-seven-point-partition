@@ -119,18 +119,6 @@ public class SevenPointPartitioner : MonoBehaviour
         FindValidPartitionTriangles();
     }
 
-    private static readonly Color[] debugColors = new Color[]
-    {
-    Color.magenta, Color.cyan, Color.yellow,
-    new Color(1f, 0.5f, 0f), // orange
-    new Color(0.5f, 0f, 1f), // violet
-    new Color(0f, 1f, 0.5f), // spring green
-    new Color(0.5f, 1f, 0f), // chartreuse
-    new Color(1f, 0f, 0.5f), // rose
-    new Color(0f, 0.5f, 1f), // azure
-                             // Add more if needed
-    };
-
     private void InitializeHalfPlanesFromPoints()
     {
         halfPlanes = new List<HalfPlane>();
