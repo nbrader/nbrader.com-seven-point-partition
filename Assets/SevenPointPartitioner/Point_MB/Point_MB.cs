@@ -1,10 +1,10 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class Point : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler
+public class Point_MB : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler
 {
     [HideInInspector]
-    public SevenPointPartitioner parentSevenPointPartitioner;
+    public SevenPointPartitioner_MB parentSevenPointPartitioner;
     public SpriteRenderer spriteRenderer;
     public Color normalColour = Color.red;
     Color highlightedColour = Color.grey;

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class HalfPlane : Line
+public class HalfPlane_MB : Line_MB
 {
     [Header("Half-Plane Settings")]
     public Transform arrowTransform;

@@ -12,24 +12,24 @@ public enum SevenPointPartitionerPartType
 [System.Serializable]
 public struct HalfPlaneTriple
 {
-    public HalfPlane halfPlaneA;
-    public HalfPlane halfPlaneB;
-    public HalfPlane halfPlaneC;
+    public HalfPlane_MB halfPlaneA;
+    public HalfPlane_MB halfPlaneB;
+    public HalfPlane_MB halfPlaneC;
 
-    public HalfPlaneTriple(HalfPlane a, HalfPlane b, HalfPlane c)
+    public HalfPlaneTriple(HalfPlane_MB a, HalfPlane_MB b, HalfPlane_MB c)
     {
         halfPlaneA = a;
         halfPlaneB = b;
         halfPlaneC = c;
     }
-}
+}   
 
-public class SevenPointPartitioner : MonoBehaviour
+public class SevenPointPartitioner_MB : MonoBehaviour
 {
     /// <summary>
     /// The input points to the partition finding problem.
     /// </summary>
-    public List<Point> points;
+    public List<Point_MB> points;
 
     public GameObject halfPlanePrefab;
 
@@ -38,7 +38,7 @@ public class SevenPointPartitioner : MonoBehaviour
     readonly float basePointColliderThickness = 0.1f;
     float pointColliderThickness;
 
-    List<HalfPlane> halfPlanes;
+    List<HalfPlane_MB> halfPlanes;
 
     // Half-plane inclusion coloring
     [Header("Half-Plane Inclusion Coloring")]
@@ -120,7 +120,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
     private void InitializeHalfPlanesFromPoints()
     {
-        halfPlanes = new List<HalfPlane>();
+        halfPlanes = new List<HalfPlane_MB>();
 
         for (int i = 0; i < points.Count; i++)
         {
@@ -129,7 +129,7 @@ public class SevenPointPartitioner : MonoBehaviour
                 if (i != j)
                 {
                     GameObject halfPlaneObj = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
-                    HalfPlane halfPlane = halfPlaneObj.GetComponent<HalfPlane>();
+                    HalfPlane_MB halfPlane = halfPlaneObj.GetComponent<HalfPlane_MB>();
 
                     halfPlane.inputPoint1 = points[i].transform;
                     halfPlane.inputPoint2 = points[j].transform;
@@ -166,7 +166,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Step 1: Find all qualifying lines (2-3 or 1-4 splits, nudged to 3-4 splits)
-        List<HalfPlane> qualifyingLines = new();
+        List<HalfPlane_MB> qualifyingLines = new();
 
         foreach (var halfPlane in halfPlanes)
         {
@@ -177,7 +177,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Step 2: Find valid pairs that satisfy LEMMA 2
-        List<(HalfPlane, HalfPlane)> validPairs = new();
+        List<(HalfPlane_MB, HalfPlane_MB)> validPairs = new();
 
         for (int i = 0; i < qualifyingLines.Count; i++)
         {
@@ -286,7 +286,7 @@ public class SevenPointPartitioner : MonoBehaviour
     /// <summary>
     /// Enhanced version that properly implements the nudging concept from the algorithm
     /// </summary>
-    private bool IsQualifyingLine(HalfPlane halfPlane)
+    private bool IsQualifyingLine(HalfPlane_MB halfPlane)
     {
         Vector2 a = halfPlane.inputPoint1.position;
         Vector2 b = halfPlane.inputPoint2.position;
@@ -296,7 +296,7 @@ public class SevenPointPartitioner : MonoBehaviour
         int onLineCount = 0;
 
         // Count points on each side of the line (excluding the two points defining the line)
-        foreach (Point p in points)
+        foreach (Point_MB p in points)
         {
             if (p.transform == halfPlane.inputPoint1 || p.transform == halfPlane.inputPoint2)
                 continue;
@@ -362,7 +362,7 @@ public class SevenPointPartitioner : MonoBehaviour
     /// Placeholder for LEMMA 2 implementation - needs to be implemented based on your specific requirements
     /// For now, this ensures lines are not identical and checks for basic geometric constraints
     /// </summary>
-    private bool SatisfiesLemma2(HalfPlane line1, HalfPlane line2)
+    private bool SatisfiesLemma2(HalfPlane_MB line1, HalfPlane_MB line2)
     {
         // Basic check: lines must be different
         if (line1 == line2) return false;
@@ -392,11 +392,11 @@ public class SevenPointPartitioner : MonoBehaviour
     /// <summary>
     /// Enhanced version that properly checks for unique 1/1/1/1/1/1/1 partitioning
     /// </summary>
-    private bool CreatesUniquePartitions(HalfPlane line1, HalfPlane line2, HalfPlane line3)
+    private bool CreatesUniquePartitions(HalfPlane_MB line1, HalfPlane_MB line2, HalfPlane_MB line3)
     {
         HashSet<int> partitionCodes = new();
 
-        foreach (Point point in points)
+        foreach (Point_MB point in points)
         {
             Vector2 pos = point.Position;
 
@@ -426,7 +426,7 @@ public class SevenPointPartitioner : MonoBehaviour
     /// <summary>
     /// Helper method to get line intersection point
     /// </summary>
-    private bool GetLineIntersection(HalfPlane line1, HalfPlane line2, out Vector2 intersection)
+    private bool GetLineIntersection(HalfPlane_MB line1, HalfPlane_MB line2, out Vector2 intersection)
     {
         Vector2 p1 = line1.inputPoint1.position;
         Vector2 p2 = line1.inputPoint2.position;
@@ -457,7 +457,7 @@ public class SevenPointPartitioner : MonoBehaviour
     private float GetMaxDistanceFromOrigin()
     {
         float maxDist = 0f;
-        foreach (Point p in points)
+        foreach (Point_MB p in points)
         {
             float dist = p.Position.magnitude;
             if (dist > maxDist) maxDist = dist;
@@ -466,7 +466,7 @@ public class SevenPointPartitioner : MonoBehaviour
     }
 
     // List to keep track of instantiated triangle half-planes for cleanup
-    private readonly List<HalfPlane> triangleHalfPlanes = new();
+    private readonly List<HalfPlane_MB> triangleHalfPlanes = new();
 
     /// <summary>
     /// Creates new half-plane instances for a triangle with proper visual styling
@@ -476,24 +476,24 @@ public class SevenPointPartitioner : MonoBehaviour
     /// <param name="originalLine3">Original qualifying line 3</param>
     /// <param name="colorIndex">Index for triangle color</param>
     /// <returns>Tuple of the three new half-plane instances</returns>
-    private (HalfPlane line1, HalfPlane line2, HalfPlane line3) CreateTriangleHalfPlanes(
-        HalfPlane originalLine1, HalfPlane originalLine2, HalfPlane originalLine3, int colorIndex)
+    private (HalfPlane_MB line1, HalfPlane_MB line2, HalfPlane_MB line3) CreateTriangleHalfPlanes(
+        HalfPlane_MB originalLine1, HalfPlane_MB originalLine2, HalfPlane_MB originalLine3, int colorIndex)
     {
         Color triangleColor = validTriangleColors[colorIndex % validTriangleColors.Length];
 
         // Create first half-plane
         GameObject halfPlaneObj1 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
-        HalfPlane halfPlane1 = halfPlaneObj1.GetComponent<HalfPlane>();
+        HalfPlane_MB halfPlane1 = halfPlaneObj1.GetComponent<HalfPlane_MB>();
         SetupTriangleHalfPlane(halfPlane1, originalLine1, triangleColor);
 
         // Create second half-plane
         GameObject halfPlaneObj2 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
-        HalfPlane halfPlane2 = halfPlaneObj2.GetComponent<HalfPlane>();
+        HalfPlane_MB halfPlane2 = halfPlaneObj2.GetComponent<HalfPlane_MB>();
         SetupTriangleHalfPlane(halfPlane2, originalLine2, triangleColor);
 
         // Create third half-plane
         GameObject halfPlaneObj3 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
-        HalfPlane halfPlane3 = halfPlaneObj3.GetComponent<HalfPlane>();
+        HalfPlane_MB halfPlane3 = halfPlaneObj3.GetComponent<HalfPlane_MB>();
         SetupTriangleHalfPlane(halfPlane3, originalLine3, triangleColor);
 
         // Add to our tracking list for cleanup
@@ -510,7 +510,7 @@ public class SevenPointPartitioner : MonoBehaviour
     /// <param name="halfPlane">The half-plane to configure</param>
     /// <param name="originalLine">The original line to copy configuration from</param>
     /// <param name="triangleColor">The color for this triangle</param>
-    private void SetupTriangleHalfPlane(HalfPlane halfPlane, HalfPlane originalLine, Color triangleColor)
+    private void SetupTriangleHalfPlane(HalfPlane_MB halfPlane, HalfPlane_MB originalLine, Color triangleColor)
     {
         // Copy the endpoints from the original line
         halfPlane.inputPoint1 = originalLine.inputPoint1;
@@ -582,7 +582,7 @@ public class SevenPointPartitioner : MonoBehaviour
     /// </summary>
     /// <param name="halfPlane">The half-plane to test against</param>
     /// <returns>A tuple of 7 booleans indicating inclusion for each point (p1, p2, p3, p4, p5, p6, p7)</returns>
-    public (bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) PointInclusions(HalfPlane halfPlane)
+    public (bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) PointInclusions(HalfPlane_MB halfPlane)
     {
         if (points.Count < 7)
         {
@@ -608,7 +608,7 @@ public class SevenPointPartitioner : MonoBehaviour
     /// <param name="point">The point to test</param>
     /// <param name="halfPlane">The half-plane defined by two points</param>
     /// <returns>True if the point is on the right side of the line or on the line</returns>
-    private bool IsPointInHalfPlaneRight(Vector2 point, HalfPlane halfPlane)
+    private bool IsPointInHalfPlaneRight(Vector2 point, HalfPlane_MB halfPlane)
     {
         if (halfPlane == null || halfPlane.inputPoint1 == null || halfPlane.inputPoint2 == null)
             return false;
@@ -658,7 +658,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Update colors for main half-planes (skip those that are part of valid triangles)
-        foreach (HalfPlane halfPlane in halfPlanes)
+        foreach (HalfPlane_MB halfPlane in halfPlanes)
         {
             // Check if this half-plane is part of a valid triangle
             bool isPartOfValidTriangle = validPartitionTriangles.Any(triangle =>
@@ -703,7 +703,7 @@ public class SevenPointPartitioner : MonoBehaviour
     /// <param name="point">The point to test</param>
     /// <param name="halfPlane">The half-plane to test against</param>
     /// <returns>True if the point is in the half-plane (including boundary)</returns>
-    private bool IsPointInHalfPlane(Vector2 point, HalfPlane halfPlane)
+    private bool IsPointInHalfPlane(Vector2 point, HalfPlane_MB halfPlane)
     {
         if (halfPlane == null || halfPlane.inputPoint1 == null || halfPlane.inputPoint2 == null)
             return false;
@@ -748,7 +748,7 @@ public class SevenPointPartitioner : MonoBehaviour
             return;
         }
 
-        foreach (Point point in points)
+        foreach (Point_MB point in points)
         {
             var inclusions = HalfPlaneInclusions(point.Position, coloringTriple);
             Color newColor = GetColorFromInclusions(inclusions);
@@ -840,8 +840,8 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
     {
-        List<Point> allPoints = points;
-        Point point = allPoints[0];
+        List<Point_MB> allPoints = points;
+        Point_MB point = allPoints[0];
         float minDistance = Vector3.Distance(position, point.transform.position);
         int closest = 0;
 
@@ -875,7 +875,7 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Reset highlights
-        foreach (Point point in points)
+        foreach (Point_MB point in points)
             point.Highlight(false);
 
         if (closestPointIndexInAllPoints != null)
@@ -941,14 +941,14 @@ public class SevenPointPartitioner : MonoBehaviour
         }
 
         // Reset highlights
-        foreach (Point point in points)
+        foreach (Point_MB point in points)
             point.Highlight(false);
 
         if (closestPointIndexInAllPoints != null)
             points[closestPointIndexInAllPoints.Value].Highlight(true);
     }
 
-    private bool ShouldShowHalfPlane(Line halfPlane)
+    private bool ShouldShowHalfPlane(Line_MB halfPlane)
     {
         // Don't show half-planes if we have collinear points
         if (hasCollinearPoints) return false;
@@ -959,7 +959,7 @@ public class SevenPointPartitioner : MonoBehaviour
         int leftCount = 0;
         int rightCount = 0;
 
-        foreach (Point p in points)
+        foreach (Point_MB p in points)
         {
             if (p.transform == halfPlane.inputPoint1 || p.transform == halfPlane.inputPoint2)
                 continue;

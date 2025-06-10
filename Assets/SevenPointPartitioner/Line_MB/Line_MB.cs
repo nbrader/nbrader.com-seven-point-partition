@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 
-public class Line : MonoBehaviour
+public class Line_MB : MonoBehaviour
 {
     [HideInInspector]
-    public SevenPointPartitioner parentSevenPointPartitioner;
+    public SevenPointPartitioner_MB parentSevenPointPartitioner;
     public SpriteRenderer spriteRenderer;
 
     public Transform lineTransform;
@@ -21,15 +21,15 @@ public class Line : MonoBehaviour
     private float _thickness = -1f; // -1 indicates use default
     public float Thickness
     {
-        get => _thickness < 0 ? SevenPointPartitioner.lineVisibleThickness : _thickness;
+        get => _thickness < 0 ? SevenPointPartitioner_MB.lineVisibleThickness : _thickness;
         set => _thickness = value;
     }
 
     // Event for allowing external scripts to request visibility.
-    public event Func<Line, bool> ShouldBeVisible;
+    public event Func<Line_MB, bool> ShouldBeVisible;
 
     // Event for allowing external scripts to force the line hidden.
-    public event Func<Line, bool> ForceHidden;
+    public event Func<Line_MB, bool> ForceHidden;
 
     public bool IsVisible
     {
@@ -59,12 +59,12 @@ public class Line : MonoBehaviour
     {
         // Ask all subscribers if they want the line shown
         bool requestedVisible = ShouldBeVisible?.GetInvocationList()
-            .Cast<Func<Line, bool>>()
+            .Cast<Func<Line_MB, bool>>()
             .Any(callback => callback(this)) ?? false;
 
         // Ask all subscribers if they want the line forcibly hidden
         bool forceHidden = ForceHidden?.GetInvocationList()
-            .Cast<Func<Line, bool>>()
+            .Cast<Func<Line_MB, bool>>()
             .Any(callback => callback(this)) ?? false;
 
         IsVisible = requestedVisible && !forceHidden;
