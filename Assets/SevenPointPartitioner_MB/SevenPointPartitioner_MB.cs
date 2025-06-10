@@ -3,6 +3,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using TMPro;
+using Unity.VisualScripting;
 
 public enum SevenPointPartitionerPartType
 {
@@ -874,13 +875,13 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
 
         // Handle camera dragging
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown((int)MouseButton.Left))
         {
             isCameraDragging = true;
             lastMousePosition = Input.mousePosition;
         }
 
-        if (Input.GetMouseButtonUp(0))
+        if (Input.GetMouseButtonUp((int)MouseButton.Left))
         {
             isCameraDragging = false;
         }
@@ -896,9 +897,14 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (hasValidTriangles && validPartitionTriangles.Count > 1)
         {
             // Handle spacebar input for toggling debug lines
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (Input.GetMouseButtonDown((int)MouseButton.Middle))
             {
-                currentTriangleIndex = (currentTriangleIndex + 1) % validPartitionTriangles.Count;
+                currentTriangleIndex = Maths.mod(currentTriangleIndex + 1, validPartitionTriangles.Count);
+                UpdateTriangleVisibility();
+            }
+            else if (Input.GetMouseButtonDown((int)MouseButton.Right))
+            {
+                currentTriangleIndex = Maths.mod(currentTriangleIndex - 1, validPartitionTriangles.Count);
                 UpdateTriangleVisibility();
             }
         }
