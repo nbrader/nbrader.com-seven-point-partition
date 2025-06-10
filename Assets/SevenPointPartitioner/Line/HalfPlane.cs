@@ -93,15 +93,11 @@ public class HalfPlane : Line
         Vector2 pointDir = point - p1;
         float crossProduct = lineDir.x * pointDir.y - lineDir.y * pointDir.x;
 
-        // If cross product is 0, point is on the line (included in closed half-plane)
-        if (Mathf.Approximately(crossProduct, 0f))
-            return true;
-
         // Determine if point is on the correct side based on interior direction
         if (interiorOnLeft)
-            return crossProduct > 0f; // Point is to the left of the line
+            return crossProduct >= 0f; // Point is to the left of the line
         else
-            return crossProduct < 0f; // Point is to the right of the line
+            return crossProduct <= 0f; // Point is to the right of the line
     }
 
     /// <summary>
