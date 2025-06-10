@@ -26,9 +26,13 @@ public struct HalfPlaneTriple
 
 public class SevenPointPartitioner : MonoBehaviour
 {
+    /// <summary>
+    /// The input points to the partition finding problem.
+    /// </summary>
     public List<Point> points;
 
     public GameObject halfPlanePrefab;
+
     public TextMeshProUGUI warningText; // UI Text component to display warnings
     public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f;
@@ -858,8 +862,6 @@ public class SevenPointPartitioner : MonoBehaviour
         points[pointIndex].Position = targetPosition;
 
         // Update colors when points move
-        //UpdatePointColorsFromHalfPlaneInclusions();
-        //UpdateHalfPlaneColorsFromPointInclusions();
         FindValidPartitionTriangles();
     }
 
@@ -889,12 +891,6 @@ public class SevenPointPartitioner : MonoBehaviour
     float scrollAmount = 0f;
     private void Update()
     {
-        // Handle spacebar input for toggling debug lines
-        //if (Input.GetKeyDown(KeyCode.Space))
-        //{
-        //    hideNonDebugLines = !hideNonDebugLines;
-        //}
-
         // Check for collinear points first
         bool previousCollinearState = hasCollinearPoints;
         hasCollinearPoints = CheckForCollinearPoints();
@@ -904,10 +900,6 @@ public class SevenPointPartitioner : MonoBehaviour
         {
             UpdateWarningDisplay();
         }
-
-        //UpdatePointColorsFromHalfPlaneInclusions();
-        //UpdateHalfPlaneColorsFromPointInclusions();
-        //FindValidPartitionTriangles();
 
         // Reset highlights
         foreach (Point point in points)
