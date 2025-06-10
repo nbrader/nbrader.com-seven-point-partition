@@ -52,19 +52,13 @@ public class SevenPointPartitioner : MonoBehaviour
     // Valid partition triangles
     [Header("Valid Partition Triangles")]
     public bool showValidPartitionTriangles = true;
-    public float validTriangleThickness = 0.3f;
-
-    // Triangle cycling parameters
-    [Header("Triangle Cycling")]
-    [Tooltip("Time in seconds to display each solution triangle")]
-    float triangleCycleDuration = 1.0f;
+    float validTriangleThickness = 0.1f;
 
     private List<HalfPlaneTriple> validPartitionTriangles = new List<HalfPlaneTriple>();
     private List<Color> triangleColors = new List<Color>();
 
     // Triangle cycling variables
     private int currentTriangleIndex = 0;
-    private float triangleCycleTimer = 0f;
     private bool hasValidTriangles = false;
 
     // Color mapping for the 8 possible combinations (false,false,false) to (true,true,true)
@@ -109,13 +103,6 @@ public class SevenPointPartitioner : MonoBehaviour
 
     private Vector3 lastMousePosition;
 
-    private List<Point> AllPoints => points
-    .Concat(debugHalfPlanePairs.Select(p => p.pointA))
-    .Concat(debugHalfPlanePairs.Select(p => p.pointB))
-    .Where(p => p != null)
-    .Distinct()
-    .ToList();
-
     private void Awake()
     {
         foreach (var point in points)
@@ -123,26 +110,10 @@ public class SevenPointPartitioner : MonoBehaviour
             point.parentSevenPointPartitioner = this;
         }
 
-        // Also set the parent for points used only in debugHalfPlanePairs
-        foreach (var pair in debugHalfPlanePairs)
-        {
-            if (pair.pointA != null && !points.Contains(pair.pointA))
-                pair.pointA.parentSevenPointPartitioner = this;
-
-            if (pair.pointB != null && !points.Contains(pair.pointB))
-                pair.pointB.parentSevenPointPartitioner = this;
-
-            pair.pointA.normalColour = Color.white;
-            pair.pointB.normalColour = Color.white;
-        }
-
         InitializeHalfPlanesFromPoints();
-        InitializeDebugHalfPlanes();
         UpdateSelectionRadius();
         FindValidPartitionTriangles();
     }
-
-    List<HalfPlane> debugHalfPlanes;
 
     private static readonly Color[] debugColors = new Color[]
     {
@@ -155,47 +126,6 @@ public class SevenPointPartitioner : MonoBehaviour
     new Color(0f, 0.5f, 1f), // azure
                              // Add more if needed
     };
-
-    [System.Serializable]
-    public struct PointPair
-    {
-        public Point pointA;
-        public Point pointB;
-    }
-
-    public List<PointPair> debugHalfPlanePairs;
-
-    private void InitializeDebugHalfPlanes()
-    {
-        debugHalfPlanes = new List<HalfPlane>();
-        int colorIndex = 0;
-
-        foreach (var pair in debugHalfPlanePairs)
-        {
-            if (pair.pointA == null || pair.pointB == null) continue;
-
-            GameObject halfPlaneObj = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
-            HalfPlane halfPlane = halfPlaneObj.GetComponent<HalfPlane>();
-
-            halfPlane.inputPoint1 = pair.pointA.transform;
-            halfPlane.inputPoint2 = pair.pointB.transform;
-            halfPlane.parentSevenPointPartitioner = this;
-
-            Color debugColor = debugColors[colorIndex % debugColors.Length];
-            debugColor.a = 0.9f;
-            halfPlane.colour = debugColor;
-            colorIndex++;
-
-            halfPlane.ShouldBeVisible += _ => !hasCollinearPoints;
-
-            debugHalfPlanes.Add(halfPlane);
-        }
-
-        coloringTriple.halfPlaneA = debugHalfPlanes[0];
-        coloringTriple.halfPlaneB = debugHalfPlanes[1];
-        coloringTriple.halfPlaneC = debugHalfPlanes[2];
-        UpdatePointColorsFromHalfPlaneInclusions();
-    }
 
     private void InitializeHalfPlanesFromPoints()
     {
@@ -320,7 +250,6 @@ public class SevenPointPartitioner : MonoBehaviour
         if (hasValidTriangles)
         {
             currentTriangleIndex = 0;
-            triangleCycleTimer = 0f;
         }
 
         // Initial visibility setup
@@ -773,20 +702,6 @@ public class SevenPointPartitioner : MonoBehaviour
                 halfPlane.Thickness = -1f; // Use default thickness
             }
         }
-
-        // Update colors for debug half-planes if they exist
-        if (debugHalfPlanes != null)
-        {
-            foreach (HalfPlane halfPlane in debugHalfPlanes)
-            {
-                var inclusions = PointInclusions(halfPlane);
-                Color newColor = GetColorFromPointInclusions(inclusions);
-
-                // Keep debug half-planes more opaque
-                newColor.a = 0.7f;
-                halfPlane.colour = newColor;
-            }
-        }
     }
 
     /// <summary>
@@ -928,10 +843,10 @@ public class SevenPointPartitioner : MonoBehaviour
             Vector3 posA = points[i].Position;
             Vector3 posB = points[j].Position;
 
-            if (!Mathf.Approximately(posA.y, posB.y))
+            if (posA.y != posB.y)
                 return posB.y.CompareTo(posA.y); // Descending Y
 
-            if (!Mathf.Approximately(posA.x, posB.x))
+            if (posA.x != posB.x)
                 return posA.x.CompareTo(posB.x); // Ascending X
 
             return posA.z.CompareTo(posB.z); // Ascending Z
@@ -950,7 +865,7 @@ public class SevenPointPartitioner : MonoBehaviour
 
     public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
     {
-        List<Point> allPoints = AllPoints;
+        List<Point> allPoints = points;
         Point point = allPoints[0];
         float minDistance = Vector3.Distance(position, point.transform.position);
         int closest = 0;
@@ -975,10 +890,10 @@ public class SevenPointPartitioner : MonoBehaviour
     private void Update()
     {
         // Handle spacebar input for toggling debug lines
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            hideNonDebugLines = !hideNonDebugLines;
-        }
+        //if (Input.GetKeyDown(KeyCode.Space))
+        //{
+        //    hideNonDebugLines = !hideNonDebugLines;
+        //}
 
         // Check for collinear points first
         bool previousCollinearState = hasCollinearPoints;
@@ -995,11 +910,11 @@ public class SevenPointPartitioner : MonoBehaviour
         //FindValidPartitionTriangles();
 
         // Reset highlights
-        foreach (Point point in AllPoints)
+        foreach (Point point in points)
             point.Highlight(false);
 
         if (closestPointIndexInAllPoints != null)
-            AllPoints[closestPointIndexInAllPoints.Value].Highlight(true);
+            points[closestPointIndexInAllPoints.Value].Highlight(true);
 
         CheckForPossibleCentres();
 
@@ -1052,22 +967,20 @@ public class SevenPointPartitioner : MonoBehaviour
         // Handle triangle cycling
         if (hasValidTriangles && validPartitionTriangles.Count > 1)
         {
-            triangleCycleTimer += Time.deltaTime;
-
-            if (triangleCycleTimer >= triangleCycleDuration)
+            // Handle spacebar input for toggling debug lines
+            if (Input.GetKeyDown(KeyCode.Space))
             {
-                triangleCycleTimer = 0f;
                 currentTriangleIndex = (currentTriangleIndex + 1) % validPartitionTriangles.Count;
                 UpdateTriangleVisibility();
             }
         }
 
         // Reset highlights
-        foreach (Point point in AllPoints)
+        foreach (Point point in points)
             point.Highlight(false);
 
         if (closestPointIndexInAllPoints != null)
-            AllPoints[closestPointIndexInAllPoints.Value].Highlight(true);
+            points[closestPointIndexInAllPoints.Value].Highlight(true);
     }
 
     private bool ShouldShowHalfPlane(Line halfPlane)
@@ -1089,7 +1002,7 @@ public class SevenPointPartitioner : MonoBehaviour
             Vector2 pt = p.transform.position;
             float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
 
-            if (Mathf.Approximately(cross, 0f))
+            if (cross != 0f)
                 continue; // Point is on the halfPlane
 
             if (cross > 0)
@@ -1144,7 +1057,7 @@ public class SevenPointPartitioner : MonoBehaviour
         {
             Vector3 worldPoint = ScreenToWorldPoint(eventData.position);
             worldPoint.z = 0;
-            AllPoints[closestPointIndexInAllPoints.Value].Position = worldPoint;
+            points[closestPointIndexInAllPoints.Value].Position = worldPoint;
         }
     }
 
