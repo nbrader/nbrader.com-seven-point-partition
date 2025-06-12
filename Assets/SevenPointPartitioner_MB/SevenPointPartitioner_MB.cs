@@ -85,18 +85,19 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     // Colors for valid partition triangles
     private static readonly Color[] validTriangleColors = new Color[]
     {
-        new Color(1f, 0f, 0f, 0.8f),      // Red
-        new Color(0f, 1f, 0f, 0.8f),      // Green
-        new Color(0f, 0f, 1f, 0.8f),      // Blue
-        new Color(1f, 1f, 0f, 0.8f),      // Yellow
-        new Color(1f, 0f, 1f, 0.8f),      // Magenta
-        new Color(0f, 1f, 1f, 0.8f),      // Cyan
-        new Color(1f, 0.5f, 0f, 0.8f),    // Orange
-        new Color(0.5f, 0f, 1f, 0.8f),    // Purple
-        new Color(0f, 1f, 0.5f, 0.8f),    // Spring Green
-        new Color(1f, 0f, 0.5f, 0.8f),    // Rose
-        new Color(0.5f, 1f, 0f, 0.8f),    // Chartreuse
-        new Color(0f, 0.5f, 1f, 0.8f),    // Azure
+        new Color(1f, 0f, 0f, 1f),      // Red
+        new Color(0f, 1f, 0f, 1f),      // Green
+        new Color(0f, 0f, 1f, 1f),      // Blue
+        new Color(1f, 1f, 0f, 1f),      // Yellow
+        new Color(1f, 0f, 1f, 1f),      // Magenta
+        new Color(0f, 1f, 1f, 1f),      // Cyan
+        new Color(1f, 0.5f, 0f, 1f),    // Orange
+        new Color(0.5f, 0f, 1f, 1f),    // Purple
+        new Color(0f, 1f, 0.5f, 1f),    // Spring Green
+        new Color(1f, 0f, 0.5f, 1f),    // Rose
+        new Color(0.5f, 1f, 0f, 1f),    // Chartreuse
+        new Color(0f, 0.5f, 1f, 1f),    // Azure
+        new Color(1f, 1f, 1f, 1f),    // White
     };
 
     private SevenPointPartitionerPartType latestDraggedPartType = SevenPointPartitionerPartType.Point;
@@ -594,7 +595,14 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         bool p6 = IsPointInHalfPlaneRight(points[5].Position, halfPlane);
         bool p7 = IsPointInHalfPlaneRight(points[6].Position, halfPlane);
 
-        return (p1, p2, p3, p4, p5, p6, p7);
+        var all_ps = new List<bool>() { p1, p2, p3, p4, p5, p6, p7 };
+
+        if (all_ps.Where(x => x).Count() > 3)
+        {
+            all_ps = all_ps.Select(x => !x).ToList();
+        }
+
+        return (all_ps[0], all_ps[1], all_ps[2], all_ps[3], all_ps[4], all_ps[5], all_ps[6]);
     }
 
     /// <summary>
@@ -640,7 +648,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (inclusions.p6) colorIndex |= 32;
         if (inclusions.p7) colorIndex |= 64;
 
-        return pointInclusionColors[colorIndex];
+        var col = validTriangleColors[colorIndex % validTriangleColors.Length];
+        col.a = Mathf.Sqrt(1 / Mathf.Pow(2, colorIndex / validTriangleColors.Length));
+
+        return col;
     }
 
     /// <summary>
