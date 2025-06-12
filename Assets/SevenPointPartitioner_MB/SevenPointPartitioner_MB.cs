@@ -649,7 +649,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (inclusions.p7) colorIndex |= 64;
 
         var col = validTriangleColors[colorIndex % validTriangleColors.Length];
-        col.a = Mathf.Sqrt(1 / Mathf.Pow(2, colorIndex / validTriangleColors.Length));
+        col.a = Mathf.Sqrt(Mathf.Sqrt(1 / Mathf.Pow(2, colorIndex / validTriangleColors.Length)));
 
         return col;
     }
