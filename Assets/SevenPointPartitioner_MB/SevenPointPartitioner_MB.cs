@@ -65,25 +65,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     private int currentTriangleIndex = 0;
     private bool hasValidTriangles = false;
 
-    // Color mapping for the 8 possible combinations (false,false,false) to (true,true,true)
-    private static readonly Color[] inclusionColors = new Color[]
-    {
-        Color.grey,             // (false, false, false) = 000
-        Color.red,              // (true, false, false)  = 001
-        Color.green,            // (false, true, false)  = 010
-        Color.blue,             // (true, true, false)   = 011
-        Color.yellow,           // (false, false, true)  = 100
-        Color.magenta,          // (true, false, true)   = 101
-        Color.cyan,             // (false, true, true)   = 110
-        Color.white             // (true, true, true)    = 111
-    };
-
-    // Color mapping for 128 possible combinations of 7 points (2^7 = 128)
-    // We'll use a hash-based coloring system for the 128 combinations
-    private static readonly Color[] pointInclusionColors = GeneratePointInclusionColors();
-
     // Colors for valid partition triangles
-    private static readonly Color[] validTriangleColors = new Color[]
+    private static readonly Color[] pointInclusionColors = new Color[]
     {
         new Color(1f, 0f, 0f, 1f),      // Red
         new Color(0f, 1f, 0f, 1f),      // Green
@@ -547,34 +530,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     }
 
     /// <summary>
-    /// Generates a diverse set of colors for the 128 possible point inclusion combinations
-    /// </summary>
-    /// <returns>Array of 128 distinct colors</returns>
-    private static Color[] GeneratePointInclusionColors()
-    {
-        Color[] colors = new Color[128];
-
-        for (int i = 0; i < 128; i++)
-        {
-            // Use different approaches to generate visually distinct colors
-            // We'll use HSV color space for better distribution
-
-            // Method 1: Use bit patterns to influence hue, saturation, and value
-            float hue = (i * 137.508f) % 360f / 360f; // Golden angle for better distribution
-            float saturation = 0.6f + 0.4f * ((i % 3) / 2f); // Vary saturation
-            float value = 0.7f + 0.3f * ((i % 5) / 4f); // Vary brightness
-
-            colors[i] = Color.HSVToRGB(hue, saturation, value);
-        }
-
-        // Ensure some key combinations have recognizable colors
-        colors[0] = Color.black;    // No points included
-        colors[127] = Color.white;  // All points included
-
-        return colors;
-    }
-
-    /// <summary>
     /// Computes the point inclusion for a given half-plane and the ordered set of 7 points
     /// </summary>
     /// <param name="halfPlane">The half-plane to test against</param>
@@ -648,90 +603,26 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (inclusions.p6) colorIndex |= 32;
         if (inclusions.p7) colorIndex |= 64;
 
-        var col = validTriangleColors[colorIndex % validTriangleColors.Length];
-        col.a = Mathf.Sqrt(Mathf.Sqrt(1 / Mathf.Pow(2, colorIndex / validTriangleColors.Length)));
+        var col = pointInclusionColors[colorIndex % pointInclusionColors.Length];
+        col.a = Mathf.Sqrt(Mathf.Sqrt(1 / Mathf.Pow(2, colorIndex / pointInclusionColors.Length)));
 
         return col;
     }
 
-    /// <summary>
-    /// Updates the colors of all half-planes based on their point inclusions
-    /// </summary>
-    public void UpdateHalfPlaneColorsFromPointInclusions()
-    {
-        if (!enablePointInclusionColoring || points.Count < 7)
-        {
-            return;
-        }
+    ///// <summary>
+    ///// Computes the half-plane inclusion for a given point and ordered triple of half-planes
+    ///// </summary>
+    ///// <param name="point">The point to test</param>
+    ///// <param name="triple">The ordered triple of half-planes (h_a, h_b, h_c)</param>
+    ///// <returns>A tuple (inA, inB, inC) indicating inclusion in each half-plane</returns>
+    //public (bool inA, bool inB, bool inC) HalfPlaneInclusions(Vector2 point, HalfPlaneTriple triple)
+    //{
+    //    bool inA = IsPointInHalfPlane(point, triple.halfPlaneA);
+    //    bool inB = IsPointInHalfPlane(point, triple.halfPlaneB);
+    //    bool inC = IsPointInHalfPlane(point, triple.halfPlaneC);
 
-        // Update colors for main half-planes (skip those that are part of valid triangles)
-        foreach (HalfPlane_MB halfPlane in halfPlanes)
-        {
-            var inclusions = PointInclusions(halfPlane);
-            Color newColor = GetColorFromPointInclusions(inclusions);
-
-            // Set alpha to make the half-planes semi-transparent
-            newColor.a = 0.3f;
-            halfPlane.colour = newColor;
-
-            // Reset thickness for non-triangle lines
-            halfPlane.Thickness = -1f; // Use default thickness
-        }
-    }
-
-    /// <summary>
-    /// Computes the half-plane inclusion for a given point and ordered triple of half-planes
-    /// </summary>
-    /// <param name="point">The point to test</param>
-    /// <param name="triple">The ordered triple of half-planes (h_a, h_b, h_c)</param>
-    /// <returns>A tuple (inA, inB, inC) indicating inclusion in each half-plane</returns>
-    public (bool inA, bool inB, bool inC) HalfPlaneInclusions(Vector2 point, HalfPlaneTriple triple)
-    {
-        bool inA = IsPointInHalfPlane(point, triple.halfPlaneA);
-        bool inB = IsPointInHalfPlane(point, triple.halfPlaneB);
-        bool inC = IsPointInHalfPlane(point, triple.halfPlaneC);
-
-        return (inA, inB, inC);
-    }
-
-    /// <summary>
-    /// Checks if a point is inside a half-plane (closed half-plane includes the boundary)
-    /// This version uses left-side inclusion for the original half-plane coloring system
-    /// </summary>
-    /// <param name="point">The point to test</param>
-    /// <param name="halfPlane">The half-plane to test against</param>
-    /// <returns>True if the point is in the half-plane (including boundary)</returns>
-    private bool IsPointInHalfPlane(Vector2 point, HalfPlane_MB halfPlane)
-    {
-        if (halfPlane == null || halfPlane.inputPoint1 == null || halfPlane.inputPoint2 == null)
-            return false;
-
-        Vector2 a = halfPlane.inputPoint1.position;
-        Vector2 b = halfPlane.inputPoint2.position;
-
-        // Calculate the cross product to determine which side of the line the point is on
-        // For a line from A to B, and point P:
-        // cross = (B.x - A.x) * (P.y - A.y) - (B.y - A.y) * (P.x - A.x)
-        // If cross >= 0, point is on the left side or on the line
-        // If cross < 0, point is on the right side
-        float cross = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x);
-
-        // For a closed half-plane, we include points on the boundary (cross == 0)
-        // The convention here assumes the half-plane is to the left of the directed line A->B
-        return cross >= 0;
-    }
-
-    /// <summary>
-    /// Maps a half-plane inclusion tuple to a color
-    /// </summary>
-    /// <param name="inclusions">The inclusion tuple (inA, inB, inC)</param>
-    /// <returns>The corresponding color</returns>
-    public Color GetColorFromInclusions((bool inA, bool inB, bool inC) inclusions)
-    {
-        // Convert boolean tuple to binary index: inA*4 + inB*2 + inC*1
-        int colorIndex = (inclusions.inA ? 4 : 0) + (inclusions.inB ? 2 : 0) + (inclusions.inC ? 1 : 0);
-        return inclusionColors[colorIndex];
-    }
+    //    return (inA, inB, inC);
+    //}
 
     private bool CheckForCollinearPoints()
     {
