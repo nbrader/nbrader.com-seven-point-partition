@@ -35,6 +35,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     public GameObject halfPlanePrefab;
 
     public TextMeshProUGUI warningText; // UI Text component to display warnings
+    public TextMeshProUGUI solutionCountText; // UI Text component to current selected solution out of how many
     public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f;
     float pointColliderThickness;
@@ -150,12 +151,18 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         // Step 1: Find all qualifying lines (2-3 or 1-4 splits, nudged to 3-4 splits)
         List<HalfPlane_MB> qualifyingLines = new();
+        List<(bool, bool, bool, bool, bool, bool, bool)> qualifyingInclusions = new();
 
         foreach (var halfPlane in halfPlanes)
         {
             if (IsQualifyingLine(halfPlane))
             {
-                qualifyingLines.Add(halfPlane);
+                (bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) inclusions = PointInclusions(halfPlane);
+                if (!qualifyingInclusions.Contains(inclusions))
+                {
+                    qualifyingLines.Add(halfPlane);
+                    qualifyingInclusions.Add(inclusions);
+                }
             }
         }
 
@@ -809,6 +816,15 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                 currentTriangleIndex = Maths.mod(currentTriangleIndex - 1, validPartitionTriangles.Count);
                 UpdateTriangleVisibility();
             }
+        }
+
+        if (!hasValidTriangles)
+        {
+            solutionCountText.text = "No Solutions.";
+        }
+        else
+        {
+            solutionCountText.text = string.Format("Solution {0} out of {1}.", currentTriangleIndex+1, validPartitionTriangles.Count);
         }
 
         // Reset highlights
