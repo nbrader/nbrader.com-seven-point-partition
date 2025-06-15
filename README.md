@@ -20,8 +20,9 @@ Drag points to explore configurations where such a partition is possible.
 
 ## Things to try / Future work
 
-The following image shows a 10 solution problem.
+The following images show 10 solution problems.
 ![alt text](Planning/10%20solution%20problem.png)
+![alt text](Planning/10%20solution%20problem%202.png)
 
 Is this the most solutions a problem can have?
 More generally, what numbers of solutions are possible?
