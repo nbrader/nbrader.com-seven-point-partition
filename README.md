@@ -18,6 +18,14 @@ Drag points to explore configurations where such a partition is possible.
 
 ▶️ [https://nbrader.com/SevenPointPartition/index.html](https://nbrader.com/SevenPointPartition/index.html)
 
+## Things to try / Future work
+
+The following image shows a 10 solution problem.
+![alt text](Planning/10%20solution%20problem.png)
+
+Is this the most solutions a problem can have?
+More generally, what numbers of solutions are possible?
+
 ## Source Code
 
 📁 [github.com/nbrader/nbrader.com-seven-point-partition](https://github.com/nbrader/nbrader.com-seven-point-partition)
