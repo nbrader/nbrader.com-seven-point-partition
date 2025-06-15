@@ -44,3 +44,10 @@ I could make an infinitesimally small step in a direction if I was working with 
 
 CONJECTURE 1: A solution with a given point at it's centre exists for every set of 3 other points which form a triangle which encloses that point
 CONJECTURE 2: A solution with a given point at it's centre exists for every set of 3 other points which form a triangle which encloses that point and the 3 remaining points occur between those triangle points when ordered by angle between some fixed direction and the displacement from the centre to that point.
+
+------
+
+A spin-off project:
+
+I want to make a web app like this but which allows an arbitrary number of points to be placed as input set S. I want the focus of this new web app to explore the space of half-planes and how they are partitioned into equivalence classes by the points of S they contain. I find it interesting that the points of any given equivalence class forms a sort of "dual shape" of lines which is bounded by the points of S in a similar way to how you could have fixed the half-planes and partitioned the points by them to produce shapes in the more standard sense.
+Note how I'm deliberately not talking about lines because this means there are more cases to cover of being left/right/on the line rather than simply in/out of the half plane. I also want to be able to specify shapes which are open and closed along an edge, which is easier when working with half-planes.
