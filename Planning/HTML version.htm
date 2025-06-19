@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seven Point Partitioner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+        }
+        
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #canvas {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            margin: 10px;
+            cursor: grab;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #canvas.grabbing {
+            cursor: grabbing;
+        }
+        
+        .point {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #ff6b6b, #ee5a52);
+            border: 3px solid white;
+            border-radius: 50%;
+            cursor: grab;
+            transform: translate(-50%, -50%);
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+        
+        .point:hover, .point.highlighted {
+            transform: translate(-50%, -50%) scale(1.3);
+            background: radial-gradient(circle, #ffd93d, #ffcd02);
+            box-shadow: 0 6px 20px rgba(255, 217, 61, 0.5);
+        }
+        
+        .point.dragging {
+            cursor: grabbing;
+            transform: translate(-50%, -50%) scale(1.4);
+            z-index: 20;
+        }
+        
+        .line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.6);
+            transform-origin: left center;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .triangle-line {
+            background: rgba(255, 107, 107, 0.8);
+            z-index: 5;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .ui-panel {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(15px);
+            padding: 15px 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            pointer-events: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .warning {
+            color: #ff6b6b;
+            font-weight: bold;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .solution-info {
+            color: #4ecdc4;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        
+        .control-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .help-text {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-size: 12px;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        
+        @media (max-width: 768px) {
+            #ui {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .controls {
+                flex-direction: row;
+                justify-content: center;
+                align-items: center;
+            }
+            
+            .point {
+                width: 24px;
+                height: 24px;
+            }
+            
+            .help-text {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas">
+            <!-- Points will be generated here -->
+        </div>
+        
+        <div id="ui">
+            <div class="ui-panel">
+                <div id="warning" class="warning" style="display: none;"></div>
+                <div id="solution-info" class="solution-info">Calculating solutions...</div>
+            </div>
+            
+            <div class="ui-panel controls">
+                <button class="control-button" id="prev-solution">← Previous</button>
+                <button class="control-button" id="next-solution">Next →</button>
+                <button class="control-button" id="toggle-lines">Toggle Lines</button>
+                <button class="control-button" id="reset-points">Reset Points</button>
+            </div>
+        </div>
+        
+        <div class="help-text">
+            <div>Desktop: Drag points with mouse • Scroll to zoom • Middle/Right click to cycle solutions</div>
+            <div>Mobile: Drag points with finger • Pinch to zoom • Use buttons to cycle solutions</div>
+        </div>
+    </div>
+
+    <script>
+        class SevenPointPartitioner {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.points = [];
+                this.lines = [];
+                this.triangleLines = [];
+                this.validTriangles = [];
+                this.currentTriangleIndex = 0;
+                this.showLines = true;
+                
+                // Touch/drag state
+                this.isDragging = false;
+                this.draggedPoint = null;
+                this.lastTouchDistance = 0;
+                this.lastTouchCenter = { x: 0, y: 0 };
+                this.isPinching = false;
+                
+                // Camera/zoom state
+                this.zoom = 1;
+                this.panX = 0;
+                this.panY = 0;
+                
+                this.init();
+            }
+            
+            init() {
+                this.createPoints();
+                this.setupEventListeners();
+                this.findValidTriangles();
+                this.updateDisplay();
+            }
+            
+            createPoints() {
+                const rect = this.canvas.getBoundingClientRect();
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const radius = Math.min(rect.width, rect.height) * 0.3;
+                
+                // Create 7 points in a rough circle with some randomization
+                for (let i = 0; i < 7; i++) {
+                    const angle = (i * 2 * Math.PI) / 7 + (Math.random() - 0.5) * 0.5;
+                    const r = radius * (0.7 + Math.random() * 0.3);
+                    
+                    const point = document.createElement('div');
+                    point.className = 'point';
+                    point.dataset.index = i;
+                    
+                    const x = centerX + r * Math.cos(angle);
+                    const y = centerY + r * Math.sin(angle);
+                    
+                    point.style.left = x + 'px';
+                    point.style.top = y + 'px';
+                    
+                    this.canvas.appendChild(point);
+                    this.points.push({
+                        element: point,
+                        x: x,
+                        y: y,
+                        index: i
+                    });
+                }
+            }
+            
+            setupEventListeners() {
+                // Mouse events
+                this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+                document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+                this.canvas.addEventListener('wheel', (e) => this.handleWheel(e));
+                
+                // Touch events
+                this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e));
+                document.addEventListener('touchmove', (e) => this.handleTouchMove(e));
+                document.addEventListener('touchend', (e) => this.handleTouchEnd(e));
+                
+                // Button events
+                document.getElementById('prev-solution').addEventListener('click', () => this.previousSolution());
+                document.getElementById('next-solution').addEventListener('click', () => this.nextSolution());
+                document.getElementById('toggle-lines').addEventListener('click', () => this.toggleLines());
+                document.getElementById('reset-points').addEventListener('click', () => this.resetPoints());
+                
+                // Keyboard events
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space') {
+                        e.preventDefault();
+                        this.nextSolution();
+                    }
+                });
+                
+                // Prevent context menu on right click
+                this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
+            
+            handleMouseDown(e) {
+                if (e.button === 1) { // Middle mouse button
+                    this.nextSolution();
+                    return;
+                } else if (e.button === 2) { // Right mouse button
+                    this.previousSolution();
+                    return;
+                }
+                
+                if (e.button !== 0) return; // Only left mouse button
+                
+                const point = this.getClosestPoint(e.clientX, e.clientY);
+                if (point && this.getDistance(e.clientX, e.clientY, point.x, point.y) < 30) {
+                    this.startDragging(point, e.clientX, e.clientY);
+                }
+            }
+            
+            handleMouseMove(e) {
+                if (this.isDragging && this.draggedPoint) {
+                    this.updatePointPosition(this.draggedPoint, e.clientX, e.clientY);
+                } else {
+                    this.updateHover(e.clientX, e.clientY);
+                }
+            }
+            
+            handleMouseUp(e) {
+                if (this.isDragging) {
+                    this.stopDragging();
+                }
+            }
+            
+            handleWheel(e) {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                this.zoom *= delta;
+                this.zoom = Math.max(0.5, Math.min(3, this.zoom));
+                this.updateTransform();
+            }
+            
+            handleTouchStart(e) {
+                e.preventDefault();
+                
+                if (e.touches.length === 1) {
+                    const touch = e.touches[0];
+                    const point = this.getClosestPoint(touch.clientX, touch.clientY);
+                    if (point && this.getDistance(touch.clientX, touch.clientY, point.x, point.y) < 40) {
+                        this.startDragging(point, touch.clientX, touch.clientY);
+                    }
+                } else if (e.touches.length === 2) {
+                    this.startPinch(e.touches[0], e.touches[1]);
+                }
+            }
+            
+            handleTouchMove(e) {
+                e.preventDefault();
+                
+                if (e.touches.length === 1 && this.isDragging && this.draggedPoint) {
+                    const touch = e.touches[0];
+                    this.updatePointPosition(this.draggedPoint, touch.clientX, touch.clientY);
+                } else if (e.touches.length === 2 && this.isPinching) {
+                    this.updatePinch(e.touches[0], e.touches[1]);
+                }
+            }
+            
+            handleTouchEnd(e) {
+                if (e.touches.length === 0) {
+                    if (this.isDragging) {
+                        this.stopDragging();
+                    }
+                    this.isPinching = false;
+                } else if (e.touches.length === 1) {
+                    this.isPinching = false;
+                }
+            }
+            
+            startPinch(touch1, touch2) {
+                this.isPinching = true;
+                this.lastTouchDistance = this.getDistance(
+                    touch1.clientX, touch1.clientY,
+                    touch2.clientX, touch2.clientY
+                );
+                this.lastTouchCenter = {
+                    x: (touch1.clientX + touch2.clientX) / 2,
+                    y: (touch1.clientY + touch2.clientY) / 2
+                };
+            }
+            
+            updatePinch(touch1, touch2) {
+                const currentDistance = this.getDistance(
+                    touch1.clientX, touch1.clientY,
+                    touch2.clientX, touch2.clientY
+                );
+                
+                const currentCenter = {
+                    x: (touch1.clientX + touch2.clientX) / 2,
+                    y: (touch1.clientY + touch2.clientY) / 2
+                };
+                
+                // Handle zoom
+                const zoomFactor = currentDistance / this.lastTouchDistance;
+                this.zoom *= zoomFactor;
+                this.zoom = Math.max(0.5, Math.min(3, this.zoom));
+                
+                // Handle pan
+                const deltaX = currentCenter.x - this.lastTouchCenter.x;
+                const deltaY = currentCenter.y - this.lastTouchCenter.y;
+                this.panX += deltaX;
+                this.panY += deltaY;
+                
+                this.updateTransform();
+                
+                this.lastTouchDistance = currentDistance;
+                this.lastTouchCenter = currentCenter;
+            }
+            
+            startDragging(point, clientX, clientY) {
+                this.isDragging = true;
+                this.draggedPoint = point;
+                point.element.classList.add('dragging');
+                this.canvas.classList.add('grabbing');
+            }
+            
+            updatePointPosition(point, clientX, clientY) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+                
+                point.x = x;
+                point.y = y;
+                point.element.style.left = x + 'px';
+                point.element.style.top = y + 'px';
+                
+                this.findValidTriangles();
+                this.updateDisplay();
+            }
+            
+            stopDragging() {
+                if (this.draggedPoint) {
+                    this.draggedPoint.element.classList.remove('dragging');
+                    this.draggedPoint = null;
+                }
+                this.isDragging = false;
+                this.canvas.classList.remove('grabbing');
+            }
+            
+            updateHover(clientX, clientY) {
+                this.points.forEach(point => {
+                    point.element.classList.remove('highlighted');
+                });
+                
+                const point = this.getClosestPoint(clientX, clientY);
+                if (point && this.getDistance(clientX, clientY, point.x, point.y) < 30) {
+                    point.element.classList.add('highlighted');
+                }
+            }
+            
+            updateTransform() {
+                this.canvas.style.transform = `scale(${this.zoom}) translate(${this.panX}px, ${this.panY}px)`;
+            }
+            
+            getClosestPoint(clientX, clientY) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+                
+                let closestPoint = null;
+                let minDistance = Infinity;
+                
+                this.points.forEach(point => {
+                    const distance = this.getDistance(x, y, point.x, point.y);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestPoint = point;
+                    }
+                });
+                
+                return closestPoint;
+            }
+            
+            getDistance(x1, y1, x2, y2) {
+                return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            }
+            
+            // Geometric calculations
+            isCollinear(p1, p2, p3, threshold = 0.01) {
+                const cross = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
+                return Math.abs(cross) < threshold;
+            }
+            
+            hasCollinearPoints() {
+                for (let i = 0; i < this.points.length; i++) {
+                    for (let j = i + 1; j < this.points.length; j++) {
+                        for (let k = j + 1; k < this.points.length; k++) {
+                            if (this.isCollinear(this.points[i], this.points[j], this.points[k])) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            isPointOnRightSide(point, lineStart, lineEnd) {
+                const cross = (lineEnd.x - lineStart.x) * (point.y - lineStart.y) - 
+                             (lineEnd.y - lineStart.y) * (point.x - lineStart.x);
+                return cross <= 0;
+            }
+            
+            isQualifyingLine(p1, p2) {
+                let leftCount = 0;
+                let rightCount = 0;
+                
+                this.points.forEach(point => {
+                    if (point === p1 || point === p2) return;
+                    
+                    if (this.isPointOnRightSide(point, p1, p2)) {
+                        rightCount++;
+                    } else {
+                        leftCount++;
+                    }
+                });
+                
+                // Check for 2-3 or 1-4 splits
+                return (leftCount === 2 && rightCount === 3) || 
+                       (leftCount === 3 && rightCount === 2) ||
+                       (leftCount === 1 && rightCount === 4) || 
+                       (leftCount === 4 && rightCount === 1);
+            }
+            
+            createsUniquePartitions(line1, line2, line3) {
+                const partitionCodes = new Set();
+                
+                this.points.forEach(point => {
+                    const in1 = this.isPointOnRightSide(point, line1.p1, line1.p2);
+                    const in2 = this.isPointOnRightSide(point, line2.p1, line2.p2);
+                    const in3 = this.isPointOnRightSide(point, line3.p1, line3.p2);
+                    
+                    const code = (in1 ? 1 : 0) + (in2 ? 2 : 0) + (in3 ? 4 : 0);
+                    
+                    if (partitionCodes.has(code)) {
+                        return false;
+                    }
+                    partitionCodes.add(code);
+                });
+                
+                return partitionCodes.size === 7;
+            }
+            
+            findValidTriangles() {
+                this.validTriangles = [];
+                
+                if (this.hasCollinearPoints()) {
+                    return;
+                }
+                
+                // Find qualifying lines
+                const qualifyingLines = [];
+                for (let i = 0; i < this.points.length; i++) {
+                    for (let j = i + 1; j < this.points.length; j++) {
+                        if (this.isQualifyingLine(this.points[i], this.points[j])) {
+                            qualifyingLines.push({
+                                p1: this.points[i],
+                                p2: this.points[j]
+                            });
+                        }
+                    }
+                }
+                
+                // Find valid triangles
+                for (let i = 0; i < qualifyingLines.length; i++) {
+                    for (let j = i + 1; j < qualifyingLines.length; j++) {
+                        for (let k = j + 1; k < qualifyingLines.length; k++) {
+                            const line1 = qualifyingLines[i];
+                            const line2 = qualifyingLines[j];
+                            const line3 = qualifyingLines[k];
+                            
+                            if (this.createsUniquePartitions(line1, line2, line3)) {
+                                this.validTriangles.push([line1, line2, line3]);
+                            }
+                        }
+                    }
+                }
+                
+                if (this.currentTriangleIndex >= this.validTriangles.length) {
+                    this.currentTriangleIndex = 0;
+                }
+            }
+            
+            drawLine(p1, p2, isTriangleLine = false) {
+                const line = document.createElement('div');
+                line.className = isTriangleLine ? 'line triangle-line' : 'line';
+                
+                const length = this.getDistance(p1.x, p1.y, p2.x, p2.y);
+                const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                
+                line.style.left = p1.x + 'px';
+                line.style.top = p1.y + 'px';
+                line.style.width = length + 'px';
+                line.style.height = isTriangleLine ? '3px' : '1px';
+                line.style.transform = `rotate(${angle}rad)`;
+                
+                this.canvas.appendChild(line);
+                
+                if (isTriangleLine) {
+                    this.triangleLines.push(line);
+                } else {
+                    this.lines.push(line);
+                }
+            }
+            
+            clearLines() {
+                this.lines.forEach(line => line.remove());
+                this.triangleLines.forEach(line => line.remove());
+                this.lines = [];
+                this.triangleLines = [];
+            }
+            
+            updateDisplay() {
+                this.clearLines();
+                
+                // Update warning
+                const warning = document.getElementById('warning');
+                if (this.hasCollinearPoints()) {
+                    warning.textContent = 'WARNING: Three or more points are collinear. Move points to continue.';
+                    warning.style.display = 'block';
+                } else {
+                    warning.style.display = 'none';
+                }
+                
+                // Update solution info
+                const solutionInfo = document.getElementById('solution-info');
+                if (this.validTriangles.length === 0) {
+                    solutionInfo.textContent = 'No solutions found.';
+                } else {
+                    solutionInfo.textContent = `Solution ${this.currentTriangleIndex + 1} of ${this.validTriangles.length}`;
+                }
+                
+                // Draw lines if enabled and not collinear
+                if (this.showLines && !this.hasCollinearPoints()) {
+                    // Draw current triangle
+                    if (this.validTriangles.length > 0 && this.currentTriangleIndex < this.validTriangles.length) {
+                        const triangle = this.validTriangles[this.currentTriangleIndex];
+                        triangle.forEach(line => {
+                            this.drawLine(line.p1, line.p2, true);
+                        });
+                    }
+                }
+            }
+            
+            nextSolution() {
+                if (this.validTriangles.length > 0) {
+                    this.currentTriangleIndex = (this.currentTriangleIndex + 1) % this.validTriangles.length;
+                    this.updateDisplay();
+                }
+            }
+            
+            previousSolution() {
+                if (this.validTriangles.length > 0) {
+                    this.currentTriangleIndex = (this.currentTriangleIndex - 1 + this.validTriangles.length) % this.validTriangles.length;
+                    this.updateDisplay();
+                }
+            }
+            
+            toggleLines() {
+                this.showLines = !this.showLines;
+                this.updateDisplay();
+            }
+            
+            resetPoints() {
+                this.points.forEach(point => point.element.remove());
+                this.points = [];
+                this.clearLines();
+                this.currentTriangleIndex = 0;
+                this.createPoints();
+                this.findValidTriangles();
+                this.updateDisplay();
+            }
+        }
+        
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new SevenPointPartitioner();
+        });
+    </script>
+</body>
+</html>
