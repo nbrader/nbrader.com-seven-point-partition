@@ -5,11 +5,6 @@ using UnityEngine.EventSystems;
 using TMPro;
 using Unity.VisualScripting;
 
-public enum SevenPointPartitionerObjectType
-{
-    Point = 0,
-}
-
 public enum DragState
 {
     None = 0,
@@ -91,7 +86,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         new Color(1f, 1f, 1f, 1f),    // White
     };
 
-    private SevenPointPartitionerObjectType latestDraggedPartType = SevenPointPartitionerObjectType.Point;
     private bool hasCollinearPoints = false;
 
     private Vector3 lastMousePosition;
@@ -780,7 +774,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         CheckForPossibleCentres();
 
-        if (currentDragState == DragState.DraggingPoint) return;
+        if (IsDraggingPoint) return;
 
         var pointerPos = Camera.main.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
 
@@ -820,14 +814,14 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         if (Input.GetMouseButtonUp((int)MouseButton.Left))
         {
-            if (currentDragState == DragState.DraggingCamera)
+            if (IsDraggingCamera)
             {
                 currentDragState = DragState.None;
             }
         }
 
         // Only drag camera if we're in camera dragging state
-        if (currentDragState == DragState.DraggingCamera)
+        if (IsDraggingCamera)
         {
             Vector3 delta = Camera.main.ScreenToWorldPoint(Input.mousePosition) - Camera.main.ScreenToWorldPoint(lastMousePosition);
             Camera.main.transform.position -= delta;
@@ -908,7 +902,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (closestPointIndexInAllPoints != null && currentDragState == DragState.None)
         {
             currentDragState = DragState.DraggingPoint;
-            latestDraggedPartType = SevenPointPartitionerObjectType.Point;
             OnBeginDragPoint(eventData);
         }
     }
@@ -919,7 +912,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        if (currentDragState == DragState.DraggingPoint && latestDraggedPartType == SevenPointPartitionerObjectType.Point)
+        if (IsDraggingPoint)
         {
             OnDragPoint(eventData);
         }
@@ -931,12 +924,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        if (currentDragState == DragState.DraggingPoint)
+        if (IsDraggingPoint)
         {
-            if (latestDraggedPartType == SevenPointPartitionerObjectType.Point)
-            {
-                OnEndDragPoint(eventData);
-            }
+            OnEndDragPoint(eventData);
 
             currentDragState = DragState.None;
             FindValidPartitionTriangles();
@@ -960,12 +950,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     public void OnEndDragPoint(PointerEventData eventData)
     {
-        // Optional: Handle end drag logic if needed
         closestPointIndexInAllPoints = null;
     }
 
-    // Optional: Add helper properties for cleaner code elsewhere
-    public bool IsDragging => currentDragState != DragState.None;
     public bool IsDraggingPoint => currentDragState == DragState.DraggingPoint;
     public bool IsDraggingCamera => currentDragState == DragState.DraggingCamera;
 
