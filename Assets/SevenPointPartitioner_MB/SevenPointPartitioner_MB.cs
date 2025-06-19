@@ -901,6 +901,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     public void OnBeginDrag(PointerEventData eventData)
     {
+        // Only allow left mouse button to start dragging
+        if (eventData.button != PointerEventData.InputButton.Left)
+            return;
+
         if (closestPointIndexInAllPoints != null && currentDragState == DragState.None)
         {
             currentDragState = DragState.DraggingPoint;
@@ -911,6 +915,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     public void OnDrag(PointerEventData eventData)
     {
+        // Only allow left mouse button to continue dragging
+        if (eventData.button != PointerEventData.InputButton.Left)
+            return;
+
         if (currentDragState == DragState.DraggingPoint && latestDraggedPartType == SevenPointPartitionerObjectType.Point)
         {
             OnDragPoint(eventData);
@@ -919,6 +927,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     public void OnEndDrag(PointerEventData eventData)
     {
+        // Only allow left mouse button to end dragging
+        if (eventData.button != PointerEventData.InputButton.Left)
+            return;
+
         if (currentDragState == DragState.DraggingPoint)
         {
             if (latestDraggedPartType == SevenPointPartitionerObjectType.Point)
