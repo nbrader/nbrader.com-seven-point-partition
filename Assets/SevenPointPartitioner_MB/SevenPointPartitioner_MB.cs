@@ -774,8 +774,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         CheckForPossibleCentres();
 
-        if (IsDraggingPoint) return;
-
         var pointerPos = Camera.main.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
 
         var (closestPoint, closestDistance) = FindClosestPoint(pointerPos);
@@ -945,6 +943,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             Vector3 worldPoint = ScreenToWorldPoint(eventData.position);
             worldPoint.z = 0;
             points[closestPointIndexInAllPoints.Value].Position = worldPoint;
+
+            // Update solutions in real-time during dragging
+            FindValidPartitionTriangles();
         }
     }
 
