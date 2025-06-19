@@ -68,6 +68,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     private int currentTriangleIndex = 0;
     private bool hasValidTriangles = false;
 
+    private bool isPinching = false;
+    private float lastPinchDistance = 0f;
+
     // Colors for valid partition triangles
     private static readonly Color[] pointInclusionColors = new Color[]
     {
@@ -788,16 +791,15 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             closestPointIndexInAllPoints = null;
         }
 
+        // Handle desktop scroll wheel zoom
         float scrollInput = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scrollInput) > 0.01f)
         {
-            // Handle camera zooming
-            float scrollDelta = scrollInput;
-            scrollAmount -= scrollDelta;
-            scrollAmount = Mathf.Clamp(scrollAmount, -5f, 5f);
-            Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
-            Camera.main.orthographicSize = Mathf.Clamp(Camera.main.orthographicSize, -50f, 50f);
+            HandleZoom(-scrollInput);
         }
+
+        // Handle mobile pinch zoom
+        HandleMobilePinchZoom();
 
         // Handle camera dragging
         if (Input.GetMouseButtonDown((int)MouseButton.Left))
@@ -857,6 +859,54 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         if (closestPointIndexInAllPoints != null)
             points[closestPointIndexInAllPoints.Value].Highlight(true);
+    }
+
+    // Add these new methods after the Update() method:
+    private void HandleZoom(float zoomDelta)
+    {
+        scrollAmount -= zoomDelta;
+        scrollAmount = Mathf.Clamp(scrollAmount, -5f, 5f);
+        Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
+        Camera.main.orthographicSize = Mathf.Clamp(Camera.main.orthographicSize, -50f, 50f);
+        UpdateSelectionRadius();
+    }
+
+    private void HandleMobilePinchZoom()
+    {
+        // Only process touch input if we have exactly 2 touches
+        if (Input.touchCount == 2)
+        {
+            Touch touch1 = Input.GetTouch(0);
+            Touch touch2 = Input.GetTouch(1);
+
+            // Calculate current distance between touches
+            float currentPinchDistance = Vector2.Distance(touch1.position, touch2.position);
+
+            if (!isPinching)
+            {
+                // Start pinching
+                isPinching = true;
+                lastPinchDistance = currentPinchDistance;
+            }
+            else
+            {
+                // Continue pinching - calculate zoom based on distance change
+                float deltaDistance = currentPinchDistance - lastPinchDistance;
+
+                // Convert distance change to zoom factor (adjust sensitivity as needed)
+                float zoomSensitivity = 0.01f;
+                float zoomDelta = deltaDistance * zoomSensitivity;
+
+                HandleZoom(zoomDelta);
+
+                lastPinchDistance = currentPinchDistance;
+            }
+        }
+        else
+        {
+            // End pinching when we don't have exactly 2 touches
+            isPinching = false;
+        }
     }
 
     private bool ShouldShowHalfPlane(Line_MB halfPlane)
