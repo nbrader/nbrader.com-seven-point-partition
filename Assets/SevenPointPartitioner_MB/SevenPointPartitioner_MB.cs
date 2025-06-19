@@ -732,6 +732,21 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         return (closestPoint: closest, closestDistance: minDistance);
     }
 
+    // Alternative: Add debug visualization to see the detection areas
+    // (Add this to help you understand what's happening - remove in production)
+    private void OnDrawGizmos()
+    {
+        if (points != null)
+        {
+            Gizmos.color = Color.yellow;
+            foreach (var point in points)
+            {
+                // Draw a wire sphere to represent the detection area
+                Gizmos.DrawWireSphere(point.Position, pointColliderThickness);
+            }
+        }
+    }
+
     private int? closestPointIndexInAllPoints;
 
     float scrollAmount = 0f;
