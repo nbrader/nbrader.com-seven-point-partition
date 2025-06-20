@@ -140,7 +140,7 @@ public class Line_MB : MonoBehaviour
         Vector2 s = q2 - q1;
 
         float rxs = r.x * s.y - r.y * s.x;
-        if (Mathf.Approximately(rxs, 0f))
+        if (rxs == 0f)
             return null;
 
         Vector2 qp = q1 - p1;
