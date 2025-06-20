@@ -287,8 +287,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             Vector2 pt = p.transform.position;
             float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
 
-            const float epsilon = 1e-6f;
-            if (Mathf.Abs(cross) < epsilon)
+            if (cross == 0)
             {
                 onLineCount++;
             }
