@@ -558,7 +558,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         var all_ps = new List<bool>() { p1, p2, p3, p4, p5, p6, p7 };
 
-        if (all_ps.Where(x => x).Count() > 3)
+        if (p1)
         {
             all_ps = all_ps.Select(x => !x).ToList();
         }
