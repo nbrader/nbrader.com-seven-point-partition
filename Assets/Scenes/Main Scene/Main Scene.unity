@@ -1734,14 +1734,14 @@ MonoBehaviour:
   - {fileID: 1572092105}
   - {fileID: 1468947146}
   - {fileID: 827683305}
-  halfPlanePrefab: {fileID: 3839745485931276093, guid: e0369a907984692419a29e4a57238b49, type: 3}
+  lineWithPerpArrowPrefab: {fileID: 3839745485931276093, guid: e0369a907984692419a29e4a57238b49, type: 3}
   warningText: {fileID: 1598873993}
   solutionCountText: {fileID: 1208303681}
   coloringTriple:
-    halfPlaneA: {fileID: 0}
-    halfPlaneB: {fileID: 0}
-    halfPlaneC: {fileID: 0}
-  enableHalfPlaneColoring: 1
+    lineWithPerpArrowA: {fileID: 0}
+    lineWithPerpArrowB: {fileID: 0}
+    lineWithPerpArrowC: {fileID: 0}
+  enableLineWithPerpArrowColoring: 1
   enablePointInclusionColoring: 1
   hideNonDebugLines: 1
   showValidPartitionTriangles: 1

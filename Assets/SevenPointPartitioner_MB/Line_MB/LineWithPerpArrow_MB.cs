@@ -1,12 +1,12 @@
 using UnityEngine;
 
-public class HalfPlane_MB : Line_MB
+public class LineWithPerpArrow_MB : Line_MB
 {
-    [Header("Half-Plane Settings")]
+    [Header("Line With Perp Arrow Settings")]
     public Transform arrowTransform;
     public SpriteRenderer arrowSpriteRenderer;
 
-    [Tooltip("Which side of the line is included in the half-plane")]
+    [Tooltip("Which side of the line is included in the line with perp arrow")]
     public bool interiorOnLeft = true;
 
     [Tooltip("Arrow size in world units at default camera size")]
@@ -24,7 +24,7 @@ public class HalfPlane_MB : Line_MB
         // Ensure arrow components exist
         if (arrowTransform == null || arrowSpriteRenderer == null)
         {
-            Debug.LogWarning("HalfPlaneLine: Arrow components not assigned!");
+            Debug.LogWarning("LineWithPerpArrowLine: Arrow components not assigned!");
         }
     }
 
@@ -74,10 +74,10 @@ public class HalfPlane_MB : Line_MB
     }
 
     /// <summary>
-    /// Check if a point is inside the closed half-plane (including points on the line)
+    /// Check if a point is inside the closed line with perp arrow (including points on the line)
     /// </summary>
     /// <param name="point">Point to test</param>
-    /// <returns>True if point is in the half-plane, false otherwise</returns>
+    /// <returns>True if point is in the line with perp arrow, false otherwise</returns>
     public bool ContainsPoint(Vector2 point)
     {
         Vector2 p1 = inputPoint1.position;
@@ -101,9 +101,9 @@ public class HalfPlane_MB : Line_MB
     }
 
     /// <summary>
-    /// Get the normal vector pointing into the half-plane interior
+    /// Get the normal vector pointing into the line with perp arrow interior
     /// </summary>
-    /// <returns>Normalized vector pointing into the half-plane</returns>
+    /// <returns>Normalized vector pointing into the line with perp arrow</returns>
     public Vector2 GetInteriorNormal()
     {
         Vector2 p1 = inputPoint1.position;
@@ -118,7 +118,7 @@ public class HalfPlane_MB : Line_MB
     }
 
     /// <summary>
-    /// Get the distance from a point to the line (positive if inside half-plane, negative if outside)
+    /// Get the distance from a point to the line (positive if inside line with perp arrow, negative if outside)
     /// </summary>
     /// <param name="point">Point to measure distance from</param>
     /// <returns>Signed distance (positive = inside, negative = outside, 0 = on line)</returns>
@@ -143,7 +143,7 @@ public class HalfPlane_MB : Line_MB
     }
 
     /// <summary>
-    /// Toggle which side of the line is considered the interior of the half-plane
+    /// Toggle which side of the line is considered the interior of the line with perp arrow
     /// </summary>
     public void FlipInteriorSide()
     {

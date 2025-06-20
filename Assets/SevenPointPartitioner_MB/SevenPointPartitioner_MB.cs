@@ -13,17 +13,17 @@ public enum DragState
 }
 
 [System.Serializable]
-public struct HalfPlaneTriple
+public struct LineWithPerpArrowTriple
 {
-    public HalfPlane_MB halfPlaneA;
-    public HalfPlane_MB halfPlaneB;
-    public HalfPlane_MB halfPlaneC;
+    public LineWithPerpArrow_MB lineWithPerpArrowA;
+    public LineWithPerpArrow_MB lineWithPerpArrowB;
+    public LineWithPerpArrow_MB lineWithPerpArrowC;
 
-    public HalfPlaneTriple(HalfPlane_MB a, HalfPlane_MB b, HalfPlane_MB c)
+    public LineWithPerpArrowTriple(LineWithPerpArrow_MB a, LineWithPerpArrow_MB b, LineWithPerpArrow_MB c)
     {
-        halfPlaneA = a;
-        halfPlaneB = b;
-        halfPlaneC = c;
+        lineWithPerpArrowA = a;
+        lineWithPerpArrowB = b;
+        lineWithPerpArrowC = c;
     }
 }   
 
@@ -34,7 +34,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// </summary>
     public List<Point_MB> points;
 
-    public GameObject halfPlanePrefab;
+    public GameObject lineWithPerpArrowPrefab;
 
     public TextMeshProUGUI warningText; // UI Text component to display warnings
     public TextMeshProUGUI solutionCountText; // UI Text component to current selected solution out of how many
@@ -42,12 +42,12 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     readonly float basePointColliderThickness = 0.1f;
     float pointColliderThickness;
 
-    List<HalfPlane_MB> halfPlanes;
+    List<LineWithPerpArrow_MB> lineWithPerpArrows;
 
     // Half-plane inclusion coloring
-    [Header("Half-Plane Inclusion Coloring")]
-    public HalfPlaneTriple coloringTriple;
-    public bool enableHalfPlaneColoring = true;
+    [Header("Line With Perp Arrow Inclusion Coloring")]
+    public LineWithPerpArrowTriple coloringTriple;
+    public bool enableLineWithPerpArrowColoring = true;
 
     // Point inclusion coloring for lines
     [Header("Point Inclusion Line Coloring")]
@@ -62,7 +62,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     public bool showValidPartitionTriangles = true;
     readonly float validTriangleThickness = 0.1f;
 
-    private readonly List<HalfPlaneTriple> validPartitionTriangles = new();
+    private readonly List<LineWithPerpArrowTriple> validPartitionTriangles = new();
 
     // Triangle cycling variables
     private int currentTriangleIndex = 0;
@@ -103,14 +103,14 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             point.parentSevenPointPartitioner = this;
         }
 
-        InitializeHalfPlanesFromPoints();
+        InitializeLineWithPerpArrowsFromPoints();
         UpdateSelectionRadius();
         FindValidPartitionTriangles();
     }
 
-    private void InitializeHalfPlanesFromPoints()
+    private void InitializeLineWithPerpArrowsFromPoints()
     {
-        halfPlanes = new List<HalfPlane_MB>();
+        lineWithPerpArrows = new List<LineWithPerpArrow_MB>();
 
         for (int i = 0; i < points.Count; i++)
         {
@@ -118,23 +118,23 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             {
                 if (i != j)
                 {
-                    GameObject halfPlaneObj = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
-                    HalfPlane_MB halfPlane = halfPlaneObj.GetComponent<HalfPlane_MB>();
+                    GameObject lineWithPerpArrowObj = Instantiate(lineWithPerpArrowPrefab, Vector3.zero, Quaternion.identity);
+                    LineWithPerpArrow_MB lineWithPerpArrow = lineWithPerpArrowObj.GetComponent<LineWithPerpArrow_MB>();
 
-                    halfPlane.inputPoint1 = points[i].transform;
-                    halfPlane.inputPoint2 = points[j].transform;
-                    halfPlane.parentSevenPointPartitioner = this;
+                    lineWithPerpArrow.inputPoint1 = points[i].transform;
+                    lineWithPerpArrow.inputPoint2 = points[j].transform;
+                    lineWithPerpArrow.parentSevenPointPartitioner = this;
 
                     // Assign debug color
                     Color color = Color.green;
                     color.a = 0.18f;
-                    halfPlane.colour = color;
+                    lineWithPerpArrow.colour = color;
 
                     // Register visibility rule - hide if collinear points exist
-                    halfPlane.ShouldBeVisible += line => !hasCollinearPoints && ShouldShowHalfPlane(line);
-                    halfPlane.ForceHidden += _ => hideNonDebugLines;
+                    lineWithPerpArrow.ShouldBeVisible += line => !hasCollinearPoints && ShouldShowLineWithPerpArrow(line);
+                    lineWithPerpArrow.ForceHidden += _ => hideNonDebugLines;
 
-                    halfPlanes.Add(halfPlane);
+                    lineWithPerpArrows.Add(lineWithPerpArrow);
                 }
             }
         }
@@ -155,24 +155,24 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
 
         // Step 1: Find all qualifying lines (2-3 or 1-4 splits, nudged to 3-4 splits)
-        List<HalfPlane_MB> qualifyingLines = new();
+        List<LineWithPerpArrow_MB> qualifyingLines = new();
         List<(bool, bool, bool, bool, bool, bool, bool)> qualifyingInclusions = new();
 
-        foreach (var halfPlane in halfPlanes)
+        foreach (var lineWithPerpArrow in lineWithPerpArrows)
         {
-            if (IsQualifyingLine(halfPlane))
+            if (IsQualifyingLine(lineWithPerpArrow))
             {
-                (bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) inclusions = PointInclusions(halfPlane);
+                (bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) inclusions = PointInclusions(lineWithPerpArrow);
                 if (!qualifyingInclusions.Contains(inclusions))
                 {
-                    qualifyingLines.Add(halfPlane);
+                    qualifyingLines.Add(lineWithPerpArrow);
                     qualifyingInclusions.Add(inclusions);
                 }
             }
         }
 
         // Step 2: Find valid pairs that satisfy LEMMA 2
-        List<(HalfPlane_MB, HalfPlane_MB)> validPairs = new();
+        List<(LineWithPerpArrow_MB, LineWithPerpArrow_MB)> validPairs = new();
 
         for (int i = 0; i < qualifyingLines.Count; i++)
         {
@@ -185,8 +185,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             }
         }
 
-        // Clean up any previously created triangle half-planes
-        CleanupTriangleHalfPlanes();
+        // Clean up any previously created triangle line with perp arrows
+        CleanupTriangleLineWithPerpArrows();
 
         for (int i = 0; i < qualifyingLines.Count; i++)
         {
@@ -208,10 +208,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                         // Check if this triple creates unique partitions for all 7 points (1/1/1/1/1/1/1)
                         if (CreatesUniquePartitions(line1, line2, line3))
                         {
-                            // Create new half-plane instances for this triangle
-                            var triangleHalfPlanes = CreateTriangleHalfPlanes(line1, line2, line3);
+                            // Create new line with perp arrow instances for this triangle
+                            var triangleLineWithPerpArrows = CreateTriangleLineWithPerpArrows(line1, line2, line3);
 
-                            var triple = new HalfPlaneTriple(triangleHalfPlanes.line1, triangleHalfPlanes.line2, triangleHalfPlanes.line3);
+                            var triple = new LineWithPerpArrowTriple(triangleLineWithPerpArrows.line1, triangleLineWithPerpArrows.line2, triangleLineWithPerpArrows.line3);
                             validPartitionTriangles.Add(triple);
                         }
                     }
@@ -256,23 +256,23 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// <summary>
     /// Sets the visibility of a specific triangle
     /// </summary>
-    private void SetTriangleVisibility(HalfPlaneTriple triangle, bool visible)
+    private void SetTriangleVisibility(LineWithPerpArrowTriple triangle, bool visible)
     {
-        if (triangle.halfPlaneA != null)
-            triangle.halfPlaneA.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
-        if (triangle.halfPlaneB != null)
-            triangle.halfPlaneB.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
-        if (triangle.halfPlaneC != null)
-            triangle.halfPlaneC.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
+        if (triangle.lineWithPerpArrowA != null)
+            triangle.lineWithPerpArrowA.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
+        if (triangle.lineWithPerpArrowB != null)
+            triangle.lineWithPerpArrowB.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
+        if (triangle.lineWithPerpArrowC != null)
+            triangle.lineWithPerpArrowC.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
     }
 
     /// <summary>
     /// Enhanced version that properly implements the nudging concept from the algorithm
     /// </summary>
-    private bool IsQualifyingLine(HalfPlane_MB halfPlane)
+    private bool IsQualifyingLine(LineWithPerpArrow_MB lineWithPerpArrow)
     {
-        Vector2 a = halfPlane.inputPoint1.position;
-        Vector2 b = halfPlane.inputPoint2.position;
+        Vector2 a = lineWithPerpArrow.inputPoint1.position;
+        Vector2 b = lineWithPerpArrow.inputPoint2.position;
 
         int leftCount = 0;
         int rightCount = 0;
@@ -281,7 +281,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         // Count points on each side of the line (excluding the two points defining the line)
         foreach (Point_MB p in points)
         {
-            if (p.transform == halfPlane.inputPoint1 || p.transform == halfPlane.inputPoint2)
+            if (p.transform == lineWithPerpArrow.inputPoint1 || p.transform == lineWithPerpArrow.inputPoint2)
                 continue;
 
             Vector2 pt = p.transform.position;
@@ -344,7 +344,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// Placeholder for LEMMA 2 implementation - needs to be implemented based on your specific requirements
     /// For now, this ensures lines are not identical and checks for basic geometric constraints
     /// </summary>
-    private bool SatisfiesLemma2(HalfPlane_MB line1, HalfPlane_MB line2)
+    private bool SatisfiesLemma2(LineWithPerpArrow_MB line1, LineWithPerpArrow_MB line2)
     {
         // Basic check: lines must be different
         if (line1 == line2) return false;
@@ -374,7 +374,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// <summary>
     /// Enhanced version that properly checks for unique 1/1/1/1/1/1/1 partitioning
     /// </summary>
-    private bool CreatesUniquePartitions(HalfPlane_MB line1, HalfPlane_MB line2, HalfPlane_MB line3)
+    private bool CreatesUniquePartitions(LineWithPerpArrow_MB line1, LineWithPerpArrow_MB line2, LineWithPerpArrow_MB line3)
     {
         HashSet<int> partitionCodes = new();
 
@@ -382,10 +382,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         {
             Vector2 pos = point.Position;
 
-            // Get inclusion in each half-plane (using consistent orientation)
-            bool in1 = IsPointInHalfPlaneRight(pos, line1);
-            bool in2 = IsPointInHalfPlaneRight(pos, line2);
-            bool in3 = IsPointInHalfPlaneRight(pos, line3);
+            // Get inclusion in each line with perp arrow (using consistent orientation)
+            bool in1 = IsPointInLineWithPerpArrowRight(pos, line1);
+            bool in2 = IsPointInLineWithPerpArrowRight(pos, line2);
+            bool in3 = IsPointInLineWithPerpArrowRight(pos, line3);
 
             // Create a unique code for this combination (3-bit binary number)
             int code = (in1 ? 1 : 0) + (in2 ? 2 : 0) + (in3 ? 4 : 0);
@@ -408,7 +408,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// <summary>
     /// Helper method to get line intersection point
     /// </summary>
-    private bool GetLineIntersection(HalfPlane_MB line1, HalfPlane_MB line2, out Vector2 intersection)
+    private bool GetLineIntersection(LineWithPerpArrow_MB line1, LineWithPerpArrow_MB line2, out Vector2 intersection)
     {
         Vector2 p1 = line1.inputPoint1.position;
         Vector2 p2 = line1.inputPoint2.position;
@@ -447,84 +447,84 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         return maxDist;
     }
 
-    // List to keep track of instantiated triangle half-planes for cleanup
-    private readonly List<HalfPlane_MB> triangleHalfPlanes = new();
+    // List to keep track of instantiated triangle line with perp arrows for cleanup
+    private readonly List<LineWithPerpArrow_MB> triangleLineWithPerpArrows = new();
 
     /// <summary>
-    /// Creates new half-plane instances for a triangle with proper visual styling
+    /// Creates new line with perp arrow instances for a triangle with proper visual styling
     /// </summary>
     /// <param name="originalLine1">Original qualifying line 1</param>
     /// <param name="originalLine2">Original qualifying line 2</param>
     /// <param name="originalLine3">Original qualifying line 3</param>
     /// <param name="colorIndex">Index for triangle color</param>
-    /// <returns>Tuple of the three new half-plane instances</returns>
-    private (HalfPlane_MB line1, HalfPlane_MB line2, HalfPlane_MB line3) CreateTriangleHalfPlanes(
-        HalfPlane_MB originalLine1, HalfPlane_MB originalLine2, HalfPlane_MB originalLine3)
+    /// <returns>Tuple of the three new line with perp arrow instances</returns>
+    private (LineWithPerpArrow_MB line1, LineWithPerpArrow_MB line2, LineWithPerpArrow_MB line3) CreateTriangleLineWithPerpArrows(
+        LineWithPerpArrow_MB originalLine1, LineWithPerpArrow_MB originalLine2, LineWithPerpArrow_MB originalLine3)
     {
-        // Create first half-plane
-        GameObject halfPlaneObj1 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
-        HalfPlane_MB halfPlane1 = halfPlaneObj1.GetComponent<HalfPlane_MB>();
+        // Create first line with perp arrow
+        GameObject lineWithPerpArrowObj1 = Instantiate(lineWithPerpArrowPrefab, Vector3.zero, Quaternion.identity);
+        LineWithPerpArrow_MB lineWithPerpArrow1 = lineWithPerpArrowObj1.GetComponent<LineWithPerpArrow_MB>();
         var inclusions1 = PointInclusions(originalLine1);
         Color newColor1 = GetColorFromPointInclusions(inclusions1);
-        SetupTriangleHalfPlane(halfPlane1, originalLine1, newColor1);
+        SetupTriangleLineWithPerpArrow(lineWithPerpArrow1, originalLine1, newColor1);
 
-        // Create second half-plane
-        GameObject halfPlaneObj2 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
-        HalfPlane_MB halfPlane2 = halfPlaneObj2.GetComponent<HalfPlane_MB>();
+        // Create second line with perp arrow
+        GameObject lineWithPerpArrowObj2 = Instantiate(lineWithPerpArrowPrefab, Vector3.zero, Quaternion.identity);
+        LineWithPerpArrow_MB lineWithPerpArrow2 = lineWithPerpArrowObj2.GetComponent<LineWithPerpArrow_MB>();
         var inclusions2 = PointInclusions(originalLine2);
         Color newColor2 = GetColorFromPointInclusions(inclusions2);
-        SetupTriangleHalfPlane(halfPlane2, originalLine2, newColor2);
+        SetupTriangleLineWithPerpArrow(lineWithPerpArrow2, originalLine2, newColor2);
 
-        // Create third half-plane
-        GameObject halfPlaneObj3 = Instantiate(halfPlanePrefab, Vector3.zero, Quaternion.identity);
-        HalfPlane_MB halfPlane3 = halfPlaneObj3.GetComponent<HalfPlane_MB>();
+        // Create third line with perp arrow
+        GameObject lineWithPerpArrowObj3 = Instantiate(lineWithPerpArrowPrefab, Vector3.zero, Quaternion.identity);
+        LineWithPerpArrow_MB lineWithPerpArrow3 = lineWithPerpArrowObj3.GetComponent<LineWithPerpArrow_MB>();
         var inclusions3 = PointInclusions(originalLine3);
         Color newColor3 = GetColorFromPointInclusions(inclusions3);
-        SetupTriangleHalfPlane(halfPlane3, originalLine3, newColor3);
+        SetupTriangleLineWithPerpArrow(lineWithPerpArrow3, originalLine3, newColor3);
 
         // Add to our tracking list for cleanup
-        triangleHalfPlanes.Add(halfPlane1);
-        triangleHalfPlanes.Add(halfPlane2);
-        triangleHalfPlanes.Add(halfPlane3);
+        triangleLineWithPerpArrows.Add(lineWithPerpArrow1);
+        triangleLineWithPerpArrows.Add(lineWithPerpArrow2);
+        triangleLineWithPerpArrows.Add(lineWithPerpArrow3);
 
-        return (halfPlane1, halfPlane2, halfPlane3);
+        return (lineWithPerpArrow1, lineWithPerpArrow2, lineWithPerpArrow3);
     }
 
     /// <summary>
-    /// Sets up a triangle half-plane with proper configuration
+    /// Sets up a triangle line with perp arrow with proper configuration
     /// </summary>
-    /// <param name="halfPlane">The half-plane to configure</param>
+    /// <param name="lineWithPerpArrow">The line with perp arrow to configure</param>
     /// <param name="originalLine">The original line to copy configuration from</param>
     /// <param name="color">The color for this triangle</param>
-    private void SetupTriangleHalfPlane(HalfPlane_MB halfPlane, HalfPlane_MB originalLine, Color color)
+    private void SetupTriangleLineWithPerpArrow(LineWithPerpArrow_MB lineWithPerpArrow, LineWithPerpArrow_MB originalLine, Color color)
     {
         // Copy the endpoints from the original line
-        halfPlane.inputPoint1 = originalLine.inputPoint1;
-        halfPlane.inputPoint2 = originalLine.inputPoint2;
-        halfPlane.parentSevenPointPartitioner = this;
+        lineWithPerpArrow.inputPoint1 = originalLine.inputPoint1;
+        lineWithPerpArrow.inputPoint2 = originalLine.inputPoint2;
+        lineWithPerpArrow.parentSevenPointPartitioner = this;
 
         // Set visual properties for triangle display
-        halfPlane.colour = color;
-        halfPlane.Thickness = validTriangleThickness;
+        lineWithPerpArrow.colour = color;
+        lineWithPerpArrow.Thickness = validTriangleThickness;
 
         // Triangle visibility will be controlled by the cycling system
-        halfPlane.ShouldBeVisible += _ => true; // Always allow visibility (controlled by SetActive)
-        halfPlane.ForceHidden += _ => false; // Don't force hide triangle lines
+        lineWithPerpArrow.ShouldBeVisible += _ => true; // Always allow visibility (controlled by SetActive)
+        lineWithPerpArrow.ForceHidden += _ => false; // Don't force hide triangle lines
     }
 
     /// <summary>
-    /// Cleans up previously created triangle half-planes
+    /// Cleans up previously created triangle line with perp arrows
     /// </summary>
-    private void CleanupTriangleHalfPlanes()
+    private void CleanupTriangleLineWithPerpArrows()
     {
-        foreach (var halfPlane in triangleHalfPlanes)
+        foreach (var lineWithPerpArrow in triangleLineWithPerpArrows)
         {
-            if (halfPlane != null && halfPlane.gameObject != null)
+            if (lineWithPerpArrow != null && lineWithPerpArrow.gameObject != null)
             {
-                DestroyImmediate(halfPlane.gameObject);
+                DestroyImmediate(lineWithPerpArrow.gameObject);
             }
         }
-        triangleHalfPlanes.Clear();
+        triangleLineWithPerpArrows.Clear();
     }
 
     /// <summary>
@@ -532,15 +532,15 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        CleanupTriangleHalfPlanes();
+        CleanupTriangleLineWithPerpArrows();
     }
 
     /// <summary>
-    /// Computes the point inclusion for a given half-plane and the ordered set of 7 points
+    /// Computes the point inclusion for a given line with perp arrow and the ordered set of 7 points
     /// </summary>
-    /// <param name="halfPlane">The half-plane to test against</param>
+    /// <param name="lineWithPerpArrow">The line with perp arrow to test against</param>
     /// <returns>A tuple of 7 booleans indicating inclusion for each point (p1, p2, p3, p4, p5, p6, p7)</returns>
-    public (bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) PointInclusions(HalfPlane_MB halfPlane)
+    public (bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) PointInclusions(LineWithPerpArrow_MB lineWithPerpArrow)
     {
         if (points.Count < 7)
         {
@@ -548,13 +548,13 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             return (false, false, false, false, false, false, false);
         }
 
-        bool p1 = IsPointInHalfPlaneRight(points[0].Position, halfPlane);
-        bool p2 = IsPointInHalfPlaneRight(points[1].Position, halfPlane);
-        bool p3 = IsPointInHalfPlaneRight(points[2].Position, halfPlane);
-        bool p4 = IsPointInHalfPlaneRight(points[3].Position, halfPlane);
-        bool p5 = IsPointInHalfPlaneRight(points[4].Position, halfPlane);
-        bool p6 = IsPointInHalfPlaneRight(points[5].Position, halfPlane);
-        bool p7 = IsPointInHalfPlaneRight(points[6].Position, halfPlane);
+        bool p1 = IsPointInLineWithPerpArrowRight(points[0].Position, lineWithPerpArrow);
+        bool p2 = IsPointInLineWithPerpArrowRight(points[1].Position, lineWithPerpArrow);
+        bool p3 = IsPointInLineWithPerpArrowRight(points[2].Position, lineWithPerpArrow);
+        bool p4 = IsPointInLineWithPerpArrowRight(points[3].Position, lineWithPerpArrow);
+        bool p5 = IsPointInLineWithPerpArrowRight(points[4].Position, lineWithPerpArrow);
+        bool p6 = IsPointInLineWithPerpArrowRight(points[5].Position, lineWithPerpArrow);
+        bool p7 = IsPointInLineWithPerpArrowRight(points[6].Position, lineWithPerpArrow);
 
         var all_ps = new List<bool>() { p1, p2, p3, p4, p5, p6, p7 };
 
@@ -567,19 +567,19 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     }
 
     /// <summary>
-    /// Checks if a point is in the right half-plane of a line (including the line itself)
+    /// Checks if a point is in the right line with perp arrow of a line (including the line itself)
     /// "Right" is defined by treating the second point as the "forward" direction from the first
     /// </summary>
     /// <param name="point">The point to test</param>
-    /// <param name="halfPlane">The half-plane defined by two points</param>
+    /// <param name="lineWithPerpArrow">The line with perp arrow defined by two points</param>
     /// <returns>True if the point is on the right side of the line or on the line</returns>
-    private bool IsPointInHalfPlaneRight(Vector2 point, HalfPlane_MB halfPlane)
+    private bool IsPointInLineWithPerpArrowRight(Vector2 point, LineWithPerpArrow_MB lineWithPerpArrow)
     {
-        if (halfPlane == null || halfPlane.inputPoint1 == null || halfPlane.inputPoint2 == null)
+        if (lineWithPerpArrow == null || lineWithPerpArrow.inputPoint1 == null || lineWithPerpArrow.inputPoint2 == null)
             return false;
 
-        Vector2 a = halfPlane.inputPoint1.position; // First point
-        Vector2 b = halfPlane.inputPoint2.position; // Second point (defines "forward")
+        Vector2 a = lineWithPerpArrow.inputPoint1.position; // First point
+        Vector2 b = lineWithPerpArrow.inputPoint2.position; // Second point (defines "forward")
 
         // Calculate the cross product to determine which side of the line the point is on
         // For a line from A to B, and point P:
@@ -588,7 +588,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         // If cross > 0, point is on the left side
         float cross = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x);
 
-        // For the right half-plane (including boundary), we want cross <= 0
+        // For the right line with perp arrow (including boundary), we want cross <= 0
         return cross <= 0;
     }
 
@@ -616,16 +616,16 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     }
 
     ///// <summary>
-    ///// Computes the half-plane inclusion for a given point and ordered triple of half-planes
+    ///// Computes the line with perp arrow inclusion for a given point and ordered triple of line with perp arrows
     ///// </summary>
     ///// <param name="point">The point to test</param>
-    ///// <param name="triple">The ordered triple of half-planes (h_a, h_b, h_c)</param>
-    ///// <returns>A tuple (inA, inB, inC) indicating inclusion in each half-plane</returns>
-    //public (bool inA, bool inB, bool inC) HalfPlaneInclusions(Vector2 point, HalfPlaneTriple triple)
+    ///// <param name="triple">The ordered triple of line with perp arrows (h_a, h_b, h_c)</param>
+    ///// <returns>A tuple (inA, inB, inC) indicating inclusion in each line with perp arrow</returns>
+    //public (bool inA, bool inB, bool inC) LineWithPerpArrowInclusions(Vector2 point, LineWithPerpArrowTriple triple)
     //{
-    //    bool inA = IsPointInHalfPlane(point, triple.halfPlaneA);
-    //    bool inB = IsPointInHalfPlane(point, triple.halfPlaneB);
-    //    bool inC = IsPointInHalfPlane(point, triple.halfPlaneC);
+    //    bool inA = IsPointInLineWithPerpArrow(point, triple.lineWithPerpArrowA);
+    //    bool inB = IsPointInLineWithPerpArrow(point, triple.lineWithPerpArrowB);
+    //    bool inC = IsPointInLineWithPerpArrow(point, triple.lineWithPerpArrowC);
 
     //    return (inA, inB, inC);
     //}
@@ -900,27 +900,27 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
     }
 
-    private bool ShouldShowHalfPlane(Line_MB halfPlane)
+    private bool ShouldShowLineWithPerpArrow(Line_MB lineWithPerpArrow)
     {
-        // Don't show half-planes if we have collinear points
+        // Don't show line with perp arrows if we have collinear points
         if (hasCollinearPoints) return false;
 
-        Vector2 a = halfPlane.inputPoint1.position;
-        Vector2 b = halfPlane.inputPoint2.position;
+        Vector2 a = lineWithPerpArrow.inputPoint1.position;
+        Vector2 b = lineWithPerpArrow.inputPoint2.position;
 
         int leftCount = 0;
         int rightCount = 0;
 
         foreach (Point_MB p in points)
         {
-            if (p.transform == halfPlane.inputPoint1 || p.transform == halfPlane.inputPoint2)
+            if (p.transform == lineWithPerpArrow.inputPoint1 || p.transform == lineWithPerpArrow.inputPoint2)
                 continue;
 
             Vector2 pt = p.transform.position;
             float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
 
             if (cross != 0f)
-                continue; // Point is on the halfPlane
+                continue; // Point is on the lineWithPerpArrow
 
             if (cross > 0)
                 leftCount++;
