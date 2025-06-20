@@ -790,7 +790,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         float scrollInput = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scrollInput) > 0.01f)
         {
-            HandleZoom(-scrollInput);
+            HandleZoom(scrollInput);
         }
 
         // Handle mobile pinch zoom
