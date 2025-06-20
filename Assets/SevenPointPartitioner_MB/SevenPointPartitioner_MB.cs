@@ -3,13 +3,13 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using TMPro;
+using Unity.VisualScripting;
 
 public enum DragState
 {
     None = 0,
     DraggingPoint = 1,
-    DraggingCamera = 2,
-    Pinching = 3
+    DraggingCamera = 2
 }
 
 [System.Serializable]
@@ -25,7 +25,7 @@ public struct HalfPlaneTriple
         halfPlaneB = b;
         halfPlaneC = c;
     }
-}
+}   
 
 public class SevenPointPartitioner_MB : MonoBehaviour
 {
@@ -36,9 +36,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     public GameObject halfPlanePrefab;
 
-    public TextMeshProUGUI warningText;
-    public TextMeshProUGUI solutionCountText;
-
+    public TextMeshProUGUI warningText; // UI Text component to display warnings
+    public TextMeshProUGUI solutionCountText; // UI Text component to current selected solution out of how many
     public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f;
     float pointColliderThickness;
@@ -69,16 +68,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     private int currentTriangleIndex = 0;
     private bool hasValidTriangles = false;
 
-    // Enhanced mobile touch handling
+    private bool isPinching = false;
     private float lastPinchDistance = 0f;
-    private Vector2 lastPinchCenter = Vector2.zero;
-
-    // Camera control settings
-    [Header("Camera Controls")]
-    public float zoomSensitivity = 1f;
-    public float panSensitivity = 1f;
-    public float minZoom = 1f;
-    public float maxZoom = 50f;
 
     // Colors for valid partition triangles
     private static readonly Color[] pointInclusionColors = new Color[]
@@ -95,11 +86,14 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         new Color(1f, 0f, 0.5f, 1f),    // Rose
         new Color(0.5f, 1f, 0f, 1f),    // Chartreuse
         new Color(0f, 0.5f, 1f, 1f),    // Azure
-        new Color(1f, 1f, 1f, 1f),      // White
+        new Color(1f, 1f, 1f, 1f),    // White
     };
 
     private bool hasCollinearPoints = false;
+
     private Vector3 lastMousePosition;
+
+    // With this single enum:
     private DragState currentDragState = DragState.None;
 
     private void Awake()
@@ -191,6 +185,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             }
         }
 
+        // Step 3: Find triples where every pair is valid and instantiate triangle half-planes
+        int validTripleCount = 0;
 
         // Clean up any previously created triangle half-planes
         CleanupTriangleHalfPlanes();
@@ -212,6 +208,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
                     if (pair12Valid && pair13Valid && pair23Valid)
                     {
+                        validTripleCount++;
 
                         // Check if this triple creates unique partitions for all 7 points (1/1/1/1/1/1/1)
                         if (CreatesUniquePartitions(line1, line2, line3))
@@ -775,214 +772,88 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         foreach (Point_MB point in points)
             point.Highlight(false);
 
-        // Unified input handling
-        HandleInput();
+        if (closestPointIndexInAllPoints != null)
+            points[closestPointIndexInAllPoints.Value].Highlight(true);
 
-        // Update solution count display
-        UpdateSolutionCountText();
+        CheckForPossibleCentres();
 
-        // Update highlights
-        UpdatePointHighlights();
-    }
+        var pointerPos = Camera.main.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
 
-    private void HandleInput()
-    {
-        Vector3 inputWorldPos;
-        bool hasInput = false;
-        bool inputStarted = false;
-        bool inputEnded = false;
-        bool isSecondaryInput = false; // Right click or two fingers
+        var (closestPoint, closestDistance) = FindClosestPoint(pointerPos);
+        closestPointIndexInAllPoints = closestPoint;
 
-        // Handle mouse input
-        if (Input.mousePresent && (Input.GetMouseButton(0) || Input.GetMouseButton(1) || Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) || Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1)))
+        if (closestDistance < pointColliderThickness)
         {
-            inputWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
-            hasInput = Input.GetMouseButton(0) || Input.GetMouseButton(1);
-            inputStarted = Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1);
-            inputEnded = Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1);
-            isSecondaryInput = Input.GetMouseButton(1) || Input.GetMouseButtonDown(1) || Input.GetMouseButtonUp(1);
-        }
-        // Handle touch input
-        else if (Input.touchCount > 0)
-        {
-            if (Input.touchCount == 1)
-            {
-                Touch touch = Input.GetTouch(0);
-                inputWorldPos = Camera.main.ScreenToWorldPoint(new Vector3(touch.position.x, touch.position.y, -Camera.main.transform.position.z));
-                inputWorldPos.z = 0;
-                hasInput = touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary;
-                inputStarted = touch.phase == TouchPhase.Began;
-                inputEnded = touch.phase == TouchPhase.Ended;
-                isSecondaryInput = false;
-            }
-            else if (Input.touchCount == 2)
-            {
-                HandlePinchGesture();
-                return; // Skip single input processing when pinching
-            }
-            else
-            {
-                return; // Ignore more than 2 touches
-            }
+            closestPointIndexInAllPoints = closestPoint;
         }
         else
         {
-            inputWorldPos = Vector3.zero;
-        }
-
-        // Handle scroll wheel zoom (mouse only)
-        if (Input.mousePresent)
-        {
-            float scrollInput = Input.GetAxis("Mouse ScrollWheel");
-            if (Mathf.Abs(scrollInput) > 0.01f)
-            {
-                HandleZoom(scrollInput * zoomSensitivity);
-            }
-
-            // Handle triangle cycling with keyboard or middle mouse
-            if (hasValidTriangles && validPartitionTriangles.Count > 1)
-            {
-                if (Input.GetMouseButtonDown(2) || Input.GetKeyDown(KeyCode.Space))
-                {
-                    CycleToNextTriangle();
-                }
-                else if (Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift))
-                {
-                    CycleToPreviousTriangle();
-                }
-            }
-        }
-        else
-        {
-            // Handle triangle cycling for touch (tap when not dragging)
-            if (inputStarted && currentDragState == DragState.None && hasValidTriangles && validPartitionTriangles.Count > 1)
-            {
-                var (closestPoint, closestDistance) = FindClosestPoint(inputWorldPos);
-                if (closestDistance >= pointColliderThickness)
-                {
-                    CycleToNextTriangle();
-                    return;
-                }
-            }
-        }
-
-        // Handle input states
-        if (inputStarted && currentDragState == DragState.None)
-        {
-            if (isSecondaryInput)
-            {
-                currentDragState = DragState.DraggingCamera;
-                lastMousePosition = Input.mousePresent ? Input.mousePosition : Input.GetTouch(0).position;
-            }
-            else
-            {
-                var (closestPoint, closestDistance) = FindClosestPoint(inputWorldPos);
-                if (closestDistance < pointColliderThickness)
-                {
-                    closestPointIndexInAllPoints = closestPoint;
-                    currentDragState = DragState.DraggingPoint;
-                }
-                else
-                {
-                    currentDragState = DragState.DraggingCamera;
-                    lastMousePosition = Input.mousePresent ? Input.mousePosition : Input.GetTouch(0).position;
-                }
-            }
-        }
-        else if (hasInput)
-        {
-            if (currentDragState == DragState.DraggingPoint && closestPointIndexInAllPoints != null)
-            {
-                points[closestPointIndexInAllPoints.Value].Position = inputWorldPos;
-                FindValidPartitionTriangles();
-            }
-            else if (currentDragState == DragState.DraggingCamera)
-            {
-                Vector3 currentInputPos = Input.mousePresent ? Input.mousePosition : (Vector3)Input.GetTouch(0).position;
-                Vector3 deltaInput = currentInputPos - lastMousePosition;
-                Vector3 worldDelta = Camera.main.ScreenToWorldPoint(new Vector3(deltaInput.x, deltaInput.y, 0)) -
-                                    Camera.main.ScreenToWorldPoint(Vector3.zero);
-                Camera.main.transform.position -= worldDelta * panSensitivity;
-                lastMousePosition = currentInputPos;
-            }
-        }
-        else if (inputEnded)
-        {
-            if (currentDragState == DragState.DraggingPoint)
-            {
-                FindValidPartitionTriangles();
-            }
-            currentDragState = DragState.None;
             closestPointIndexInAllPoints = null;
         }
 
-        // Update highlight
-        if (currentDragState == DragState.None || currentDragState == DragState.DraggingPoint)
+        // Handle desktop scroll wheel zoom
+        float scrollInput = Input.GetAxis("Mouse ScrollWheel");
+        if (Mathf.Abs(scrollInput) > 0.01f)
         {
-            var (closestPoint, closestDistance) = FindClosestPoint(inputWorldPos);
-            if (closestDistance < pointColliderThickness)
+            HandleZoom(-scrollInput);
+        }
+
+        // Handle mobile pinch zoom
+        HandleMobilePinchZoom();
+
+        // Handle camera dragging
+        if (Input.GetMouseButtonDown((int)MouseButton.Left))
+        {
+            // Only start camera dragging if we're not close to any point and not already dragging
+            if (closestPointIndexInAllPoints == null && currentDragState == DragState.None)
             {
-                closestPointIndexInAllPoints = closestPoint;
-            }
-            else if (currentDragState != DragState.DraggingPoint)
-            {
-                closestPointIndexInAllPoints = null;
+                currentDragState = DragState.DraggingCamera;
+                lastMousePosition = Input.mousePosition;
             }
         }
-    }
 
-    private void HandlePinchGesture()
-    {
-        Touch touch1 = Input.GetTouch(0);
-        Touch touch2 = Input.GetTouch(1);
-
-        float currentPinchDistance = Vector2.Distance(touch1.position, touch2.position);
-        Vector2 currentPinchCenter = (touch1.position + touch2.position) * 0.5f;
-
-        if (currentDragState != DragState.Pinching)
+        if (Input.GetMouseButtonUp((int)MouseButton.Left))
         {
-            currentDragState = DragState.Pinching;
-            lastPinchDistance = currentPinchDistance;
-            lastPinchCenter = currentPinchCenter;
+            if (IsDraggingCamera)
+            {
+                currentDragState = DragState.None;
+            }
+        }
+
+        // Only drag camera if we're in camera dragging state
+        if (IsDraggingCamera)
+        {
+            Vector3 delta = Camera.main.ScreenToWorldPoint(Input.mousePosition) - Camera.main.ScreenToWorldPoint(lastMousePosition);
+            Camera.main.transform.position -= delta;
+            lastMousePosition = Input.mousePosition;
+        }
+
+        // Handle triangle cycling
+        if (hasValidTriangles && validPartitionTriangles.Count > 1)
+        {
+            // Handle spacebar input for toggling debug lines
+            if (Input.GetMouseButtonDown((int)MouseButton.Middle))
+            {
+                currentTriangleIndex = Maths.mod(currentTriangleIndex + 1, validPartitionTriangles.Count);
+                UpdateTriangleVisibility();
+            }
+            else if (Input.GetMouseButtonDown((int)MouseButton.Right))
+            {
+                currentTriangleIndex = Maths.mod(currentTriangleIndex - 1, validPartitionTriangles.Count);
+                UpdateTriangleVisibility();
+            }
+        }
+
+        if (!hasValidTriangles)
+        {
+            solutionCountText.text = "No Solutions.";
         }
         else
         {
-            // Handle zoom
-            float deltaDistance = currentPinchDistance - lastPinchDistance;
-            float zoomDelta = deltaDistance * 0.01f * zoomSensitivity;
-            HandleZoom(zoomDelta);
-
-            // Handle camera panning during pinch
-            Vector2 centerDelta = currentPinchCenter - lastPinchCenter;
-            Vector3 worldDelta = Camera.main.ScreenToWorldPoint(new Vector3(centerDelta.x, centerDelta.y, 0)) -
-                                Camera.main.ScreenToWorldPoint(Vector3.zero);
-            Camera.main.transform.position -= worldDelta * panSensitivity;
-
-            lastPinchDistance = currentPinchDistance;
-            lastPinchCenter = currentPinchCenter;
+            solutionCountText.text = string.Format("Solution {0} out of {1}.", currentTriangleIndex+1, validPartitionTriangles.Count);
         }
 
-        // End pinching when touches end
-        if (touch1.phase == TouchPhase.Ended || touch2.phase == TouchPhase.Ended)
-        {
-            currentDragState = DragState.None;
-        }
-    }
-
-    private void CycleToNextTriangle()
-    {
-        currentTriangleIndex = Maths.mod(currentTriangleIndex + 1, validPartitionTriangles.Count);
-        UpdateTriangleVisibility();
-    }
-
-    private void CycleToPreviousTriangle()
-    {
-        currentTriangleIndex = Maths.mod(currentTriangleIndex - 1, validPartitionTriangles.Count);
-        UpdateTriangleVisibility();
-    }
-
-    private void UpdatePointHighlights()
-    {
+        // Reset highlights
         foreach (Point_MB point in points)
             point.Highlight(false);
 
@@ -990,28 +861,52 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             points[closestPointIndexInAllPoints.Value].Highlight(true);
     }
 
-    private void UpdateSolutionCountText()
-    {
-        if (solutionCountText != null)
-        {
-            if (!hasValidTriangles)
-            {
-                solutionCountText.text = "No Solutions.";
-            }
-            else
-            {
-                solutionCountText.text = $"Solution {currentTriangleIndex + 1} of {validPartitionTriangles.Count}";
-            }
-        }
-    }
-
+    // Add these new methods after the Update() method:
     private void HandleZoom(float zoomDelta)
     {
         scrollAmount -= zoomDelta;
         scrollAmount = Mathf.Clamp(scrollAmount, -5f, 5f);
         Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
-        Camera.main.orthographicSize = Mathf.Clamp(Camera.main.orthographicSize, minZoom, maxZoom);
+        Camera.main.orthographicSize = Mathf.Clamp(Camera.main.orthographicSize, -50f, 50f);
         UpdateSelectionRadius();
+    }
+
+    private void HandleMobilePinchZoom()
+    {
+        // Only process touch input if we have exactly 2 touches
+        if (Input.touchCount == 2)
+        {
+            Touch touch1 = Input.GetTouch(0);
+            Touch touch2 = Input.GetTouch(1);
+
+            // Calculate current distance between touches
+            float currentPinchDistance = Vector2.Distance(touch1.position, touch2.position);
+
+            if (!isPinching)
+            {
+                // Start pinching
+                isPinching = true;
+                lastPinchDistance = currentPinchDistance;
+            }
+            else
+            {
+                // Continue pinching - calculate zoom based on distance change
+                float deltaDistance = currentPinchDistance - lastPinchDistance;
+
+                // Convert distance change to zoom factor (adjust sensitivity as needed)
+                float zoomSensitivity = 0.01f;
+                float zoomDelta = deltaDistance * zoomSensitivity;
+
+                HandleZoom(zoomDelta);
+
+                lastPinchDistance = currentPinchDistance;
+            }
+        }
+        else
+        {
+            // End pinching when we don't have exactly 2 touches
+            isPinching = false;
+        }
     }
 
     private bool ShouldShowHalfPlane(Line_MB halfPlane)
@@ -1110,7 +1005,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     }
 
     public bool IsDraggingPoint => currentDragState == DragState.DraggingPoint;
-    public bool IsDraggingCamera => currentDragState == DragState.DraggingCamera || currentDragState == DragState.Pinching;
+    public bool IsDraggingCamera => currentDragState == DragState.DraggingCamera;
 
     private Vector3 ScreenToWorldPoint(Vector2 screenPosition)
     {
