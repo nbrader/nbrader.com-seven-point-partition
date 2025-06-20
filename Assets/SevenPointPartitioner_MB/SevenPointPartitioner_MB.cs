@@ -185,9 +185,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             }
         }
 
-        // Step 3: Find triples where every pair is valid and instantiate triangle half-planes
-        int validTripleCount = 0;
-
         // Clean up any previously created triangle half-planes
         CleanupTriangleHalfPlanes();
 
@@ -208,8 +205,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
                     if (pair12Valid && pair13Valid && pair23Valid)
                     {
-                        validTripleCount++;
-
                         // Check if this triple creates unique partitions for all 7 points (1/1/1/1/1/1/1)
                         if (CreatesUniquePartitions(line1, line2, line3))
                         {
