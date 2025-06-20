@@ -732,8 +732,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         return (closestPoint: closest, closestDistance: minDistance);
     }
 
-    // Alternative: Add debug visualization to see the detection areas
-    // (Add this to help you understand what's happening - remove in production)
     private void OnDrawGizmos()
     {
         if (points != null)
@@ -856,7 +854,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             points[closestPointIndexInAllPoints.Value].Highlight(true);
     }
 
-    // Add these new methods after the Update() method:
     private void HandleZoom(float zoomDelta)
     {
         scrollAmount -= zoomDelta;
