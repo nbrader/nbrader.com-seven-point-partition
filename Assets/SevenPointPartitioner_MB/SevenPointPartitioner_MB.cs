@@ -46,7 +46,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     [Header("Point Scaling")] //
     public float basePointVisualScale = 0.5f; //
 
-    List<LineWithPerpArrow_MB> lineWithPerpArrows;
+    List<LineWithPerpArrow_MB> linesWithPerpArrows;
 
     // Half-plane inclusion coloring
     [Header("Line With Perp Arrow Inclusion Coloring")]
@@ -107,15 +107,15 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             point.parentSevenPointPartitioner = this;
         }
 
-        InitializeLineWithPerpArrowsFromPoints();
+        InitializeLinesWithPerpArrowsFromPoints();
         UpdateSelectionRadius();
-        UpdatePointVisualScale(); // Call this on Awake to set initial scale
+        UpdatePointVisualScale();
         FindValidPartitionTriangles();
     }
 
-    private void InitializeLineWithPerpArrowsFromPoints()
+    private void InitializeLinesWithPerpArrowsFromPoints()
     {
-        lineWithPerpArrows = new List<LineWithPerpArrow_MB>();
+        linesWithPerpArrows = new List<LineWithPerpArrow_MB>();
 
         for (int i = 0; i < points.Count; i++)
         {
@@ -139,7 +139,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                     lineWithPerpArrow.ShouldBeVisible += line => !hasCollinearPoints && ShouldShowLineWithPerpArrow(line);
                     lineWithPerpArrow.ForceHidden += _ => hideNonDebugLines;
 
-                    lineWithPerpArrows.Add(lineWithPerpArrow);
+                    linesWithPerpArrows.Add(lineWithPerpArrow);
                 }
             }
         }
@@ -163,7 +163,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         List<LineWithPerpArrow_MB> qualifyingLines = new();
         List<(bool, bool, bool, bool, bool, bool, bool)> qualifyingInclusions = new();
 
-        foreach (var lineWithPerpArrow in lineWithPerpArrows)
+        foreach (var lineWithPerpArrow in linesWithPerpArrows)
         {
             if (IsQualifyingLine(lineWithPerpArrow))
             {
@@ -191,7 +191,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
 
         // Clean up any previously created triangle line with perp arrows
-        CleanupTriangleLineWithPerpArrows();
+        CleanupTriangleLinesWithPerpArrows();
 
         for (int i = 0; i < qualifyingLines.Count; i++)
         {
@@ -214,9 +214,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                         if (CreatesUniquePartitions(line1, line2, line3))
                         {
                             // Create new line with perp arrow instances for this triangle
-                            var triangleLineWithPerpArrows = CreateTriangleLineWithPerpArrows(line1, line2, line3);
+                            var triangleLinesWithPerpArrows = CreateTriangleLinesWithPerpArrows(line1, line2, line3);
 
-                            var triple = new LineWithPerpArrowTriple(triangleLineWithPerpArrows.line1, triangleLineWithPerpArrows.line2, triangleLineWithPerpArrows.line3);
+                            var triple = new LineWithPerpArrowTriple(triangleLinesWithPerpArrows.line1, triangleLinesWithPerpArrows.line2, triangleLinesWithPerpArrows.line3);
                             validPartitionTriangles.Add(triple);
                         }
                     }
@@ -453,7 +453,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     }
 
     // List to keep track of instantiated triangle line with perp arrows for cleanup
-    private readonly List<LineWithPerpArrow_MB> triangleLineWithPerpArrows = new();
+    private readonly List<LineWithPerpArrow_MB> triangleLinesWithPerpArrows = new();
 
     /// <summary>
     /// Creates new line with perp arrow instances for a triangle with proper visual styling
@@ -462,7 +462,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// <param name="originalLine2">Original qualifying line 2</param>
     /// <param name="originalLine3">Original qualifying line 3</param>
     /// <returns>Tuple of the three new line with perp arrow instances</returns>
-    private (LineWithPerpArrow_MB line1, LineWithPerpArrow_MB line2, LineWithPerpArrow_MB line3) CreateTriangleLineWithPerpArrows(
+    private (LineWithPerpArrow_MB line1, LineWithPerpArrow_MB line2, LineWithPerpArrow_MB line3) CreateTriangleLinesWithPerpArrows(
         LineWithPerpArrow_MB originalLine1, LineWithPerpArrow_MB originalLine2, LineWithPerpArrow_MB originalLine3)
     {
         // Create first line with perp arrow
@@ -487,9 +487,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         SetupTriangleLineWithPerpArrow(lineWithPerpArrow3, originalLine3, newColor3);
 
         // Add to our tracking list for cleanup
-        triangleLineWithPerpArrows.Add(lineWithPerpArrow1);
-        triangleLineWithPerpArrows.Add(lineWithPerpArrow2);
-        triangleLineWithPerpArrows.Add(lineWithPerpArrow3);
+        triangleLinesWithPerpArrows.Add(lineWithPerpArrow1);
+        triangleLinesWithPerpArrows.Add(lineWithPerpArrow2);
+        triangleLinesWithPerpArrows.Add(lineWithPerpArrow3);
 
         return (lineWithPerpArrow1, lineWithPerpArrow2, lineWithPerpArrow3);
     }
@@ -519,16 +519,16 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// <summary>
     /// Cleans up previously created triangle line with perp arrows
     /// </summary>
-    private void CleanupTriangleLineWithPerpArrows()
+    private void CleanupTriangleLinesWithPerpArrows()
     {
-        foreach (var lineWithPerpArrow in triangleLineWithPerpArrows)
+        foreach (var lineWithPerpArrow in triangleLinesWithPerpArrows)
         {
             if (lineWithPerpArrow != null && lineWithPerpArrow.gameObject != null)
             {
                 DestroyImmediate(lineWithPerpArrow.gameObject);
             }
         }
-        triangleLineWithPerpArrows.Clear();
+        triangleLinesWithPerpArrows.Clear();
     }
 
     /// <summary>
@@ -536,7 +536,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        CleanupTriangleLineWithPerpArrows();
+        CleanupTriangleLinesWithPerpArrows();
     }
 
     /// <summary>
@@ -864,7 +864,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
         Camera.main.orthographicSize = Mathf.Clamp(Camera.main.orthographicSize, -50f, 50f);
         UpdateSelectionRadius();
-        UpdatePointVisualScale(); // Call this when zoom changes
+        UpdatePointVisualScale();
     }
 
     private void HandleMobilePinchZoom()
