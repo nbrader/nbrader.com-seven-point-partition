@@ -43,8 +43,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     float pointColliderThickness;
 
     // Add a base scale for the points when the camera is at its default orthographic size
-    [Header("Point Scaling")] //
-    public float basePointVisualScale = 0.5f; //
+    [Header("Scaling")]
+    float basePointVisualScale = 0.005f;
+    float baseLineVisualScale = 0.05f;
 
     List<LineWithPerpArrow_MB> linesWithPerpArrows;
 
@@ -109,7 +110,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         InitializeLinesWithPerpArrowsFromPoints();
         UpdateSelectionRadius();
-        UpdatePointVisualScale();
         FindValidPartitionTriangles();
     }
 
@@ -233,6 +233,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         // Initial visibility setup
         UpdateTriangleVisibility();
+        UpdateVisualScale();
     }
 
     /// <summary>
@@ -269,6 +270,19 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             triangle.lineWithPerpArrowB.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
         if (triangle.lineWithPerpArrowC != null)
             triangle.lineWithPerpArrowC.gameObject.SetActive(visible && showValidPartitionTriangles && !hasCollinearPoints);
+    }
+
+    /// <summary>
+    /// Sets the thickness scale of a specific triangle
+    /// </summary>
+    private void SetTriangleThicknessScale(LineWithPerpArrowTriple triangle, float scale)
+    {
+        if (triangle.lineWithPerpArrowA != null)
+            triangle.lineWithPerpArrowA.SetSpriteScale(scale);
+        if (triangle.lineWithPerpArrowB != null)
+            triangle.lineWithPerpArrowB.SetSpriteScale(scale);
+        if (triangle.lineWithPerpArrowC != null)
+            triangle.lineWithPerpArrowC.SetSpriteScale(scale);
     }
 
     /// <summary>
@@ -864,7 +878,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
         Camera.main.orthographicSize = Mathf.Clamp(Camera.main.orthographicSize, -50f, 50f);
         UpdateSelectionRadius();
-        UpdatePointVisualScale();
+        UpdateVisualScale();
     }
 
     private void HandleMobilePinchZoom()
@@ -909,20 +923,33 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// Updates the visual scale of all points based on the current camera orthographic size.
     /// This makes them appear to maintain a constant size on screen.
     /// </summary>
-    private void UpdatePointVisualScale()
+    private void UpdateVisualScale()
     {
         if (Camera.main != null && Camera.main.orthographic) // Ensure it's an orthographic camera
         {
-            float orthographicSize = Camera.main.orthographicSize; //
+            float orthographicSize = Camera.main.orthographicSize;
             // The scale factor should be proportional to the orthographic size.
             // If orthographicSize is 1, the scale is basePointVisualScale.
             // If orthographicSize is 2, the scale is 2 * basePointVisualScale.
-            float currentPointScale = basePointVisualScale * orthographicSize; //
+            float currentPointScale = basePointVisualScale * orthographicSize;
+            float currentLineScale = baseLineVisualScale * orthographicSize;
 
-            foreach (var point in points) //
+            foreach (var point in points)
             {
-                point.SetSpriteScale(currentPointScale); // Use the new method in Point_MB
+                point.SetSpriteScale(currentPointScale);
             }
+
+            foreach (var line in linesWithPerpArrows)
+            {
+                line.SetSpriteScale(currentLineScale);
+            }
+
+            foreach (var line in triangleLinesWithPerpArrows)
+            {
+                line.SetSpriteScale(currentLineScale);
+            }
+
+            SetTriangleThicknessScale(coloringTriple, currentLineScale);
         }
     }
 

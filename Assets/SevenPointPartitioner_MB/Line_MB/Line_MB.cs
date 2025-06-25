@@ -48,11 +48,22 @@ public class Line_MB : MonoBehaviour
         float dist = disp.magnitude;
 
         lineTransform.SetPositionAndRotation(endPoint1.position, Quaternion.Euler(0f, 0f, degrees));
-        lineTransform.localScale = new Vector3(dist, Thickness, 1);
+        lineTransform.localScale = new Vector3(dist, 1f, 1f);
+        spriteRenderer.transform.localScale = new Vector3(0.1957725f, thicknessScale * Thickness, 0.1957725f);
 
         spriteRenderer.color = colour;
 
         UpdateVisibility();
+    }
+
+    float thicknessScale = 1f;
+    /// <summary>
+    /// Sets the local scale of the GameObject that has the SpriteRenderer attached.
+    /// </summary>
+    /// <param name="scale">The desired uniform scale.</param>
+    public void SetSpriteScale(float scale)
+    {
+        thicknessScale = scale;
     }
 
     private void UpdateVisibility()
