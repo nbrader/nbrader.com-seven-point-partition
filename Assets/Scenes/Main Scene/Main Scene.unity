@@ -1737,6 +1737,7 @@ MonoBehaviour:
   lineWithPerpArrowPrefab: {fileID: 3839745485931276093, guid: e0369a907984692419a29e4a57238b49, type: 3}
   warningText: {fileID: 1598873993}
   solutionCountText: {fileID: 1208303681}
+  basePointVisualScale: 0.005
   coloringTriple:
     lineWithPerpArrowA: {fileID: 0}
     lineWithPerpArrowB: {fileID: 0}

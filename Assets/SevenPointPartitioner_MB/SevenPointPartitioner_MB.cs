@@ -25,7 +25,7 @@ public struct LineWithPerpArrowTriple
         lineWithPerpArrowB = b;
         lineWithPerpArrowC = c;
     }
-}   
+}
 
 public class SevenPointPartitioner_MB : MonoBehaviour
 {
@@ -41,6 +41,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f;
     float pointColliderThickness;
+
+    // Add a base scale for the points when the camera is at its default orthographic size
+    [Header("Point Scaling")] //
+    public float basePointVisualScale = 0.5f; //
 
     List<LineWithPerpArrow_MB> lineWithPerpArrows;
 
@@ -105,6 +109,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         InitializeLineWithPerpArrowsFromPoints();
         UpdateSelectionRadius();
+        UpdatePointVisualScale(); // Call this on Awake to set initial scale
         FindValidPartitionTriangles();
     }
 
@@ -456,7 +461,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// <param name="originalLine1">Original qualifying line 1</param>
     /// <param name="originalLine2">Original qualifying line 2</param>
     /// <param name="originalLine3">Original qualifying line 3</param>
-    /// <param name="colorIndex">Index for triangle color</param>
     /// <returns>Tuple of the three new line with perp arrow instances</returns>
     private (LineWithPerpArrow_MB line1, LineWithPerpArrow_MB line2, LineWithPerpArrow_MB line3) CreateTriangleLineWithPerpArrows(
         LineWithPerpArrow_MB originalLine1, LineWithPerpArrow_MB originalLine2, LineWithPerpArrow_MB originalLine3)
@@ -823,13 +827,13 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         // Handle triangle cycling
         if (hasValidTriangles && validPartitionTriangles.Count > 1)
         {
-            // Handle spacebar input for toggling debug lines
-            if (Input.GetMouseButtonDown((int)MouseButton.Middle))
+            // Handle spacebar input for cycling through solutions
+            if (Input.GetMouseButtonDown((int)MouseButton.Middle)) // Middle mouse button for next
             {
                 currentTriangleIndex = Maths.mod(currentTriangleIndex + 1, validPartitionTriangles.Count);
                 UpdateTriangleVisibility();
             }
-            else if (Input.GetMouseButtonDown((int)MouseButton.Right))
+            else if (Input.GetMouseButtonDown((int)MouseButton.Right)) // Right mouse button for previous
             {
                 currentTriangleIndex = Maths.mod(currentTriangleIndex - 1, validPartitionTriangles.Count);
                 UpdateTriangleVisibility();
@@ -842,7 +846,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
         else
         {
-            solutionCountText.text = string.Format("Solution {0} out of {1}.", currentTriangleIndex+1, validPartitionTriangles.Count);
+            solutionCountText.text = string.Format("Solution {0} out of {1}.", currentTriangleIndex + 1, validPartitionTriangles.Count);
         }
 
         // Reset highlights
@@ -860,6 +864,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
         Camera.main.orthographicSize = Mathf.Clamp(Camera.main.orthographicSize, -50f, 50f);
         UpdateSelectionRadius();
+        UpdatePointVisualScale(); // Call this when zoom changes
     }
 
     private void HandleMobilePinchZoom()
@@ -897,6 +902,27 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         {
             // End pinching when we don't have exactly 2 touches
             isPinching = false;
+        }
+    }
+
+    /// <summary>
+    /// Updates the visual scale of all points based on the current camera orthographic size.
+    /// This makes them appear to maintain a constant size on screen.
+    /// </summary>
+    private void UpdatePointVisualScale()
+    {
+        if (Camera.main != null && Camera.main.orthographic) // Ensure it's an orthographic camera
+        {
+            float orthographicSize = Camera.main.orthographicSize; //
+            // The scale factor should be proportional to the orthographic size.
+            // If orthographicSize is 1, the scale is basePointVisualScale.
+            // If orthographicSize is 2, the scale is 2 * basePointVisualScale.
+            float currentPointScale = basePointVisualScale * orthographicSize; //
+
+            foreach (var point in points) //
+            {
+                point.SetSpriteScale(currentPointScale); // Use the new method in Point_MB
+            }
         }
     }
 
