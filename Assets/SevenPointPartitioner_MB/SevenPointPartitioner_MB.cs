@@ -284,7 +284,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             if (p.transform == lineWithPerpArrow.inputPoint1 || p.transform == lineWithPerpArrow.inputPoint2)
                 continue;
 
-            Vector2 pt = p.transform.position;
+            Vector2 pt = p.Position;
             float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
 
             if (cross == 0)
@@ -714,13 +714,13 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     {
         List<Point_MB> allPoints = points;
         Point_MB point = allPoints[0];
-        float minDistance = Vector3.Distance(position, point.transform.position);
+        float minDistance = Vector3.Distance(position, point.Position);
         int closest = 0;
 
         for (int i = 1; i < allPoints.Count; i++)
         {
             point = allPoints[i];
-            float distance = Vector3.Distance(position, point.transform.position);
+            float distance = Vector3.Distance(position, point.Position);
             if (distance < minDistance)
             {
                 minDistance = distance;
@@ -916,7 +916,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             if (p.transform == lineWithPerpArrow.inputPoint1 || p.transform == lineWithPerpArrow.inputPoint2)
                 continue;
 
-            Vector2 pt = p.transform.position;
+            Vector2 pt = p.Position;
             float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
 
             if (cross != 0f)
