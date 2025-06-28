@@ -675,8 +675,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     private bool CheckForCollinearPoints()
     {
-        const float collinearityThreshold = 0.01f; // Tolerance for floating point comparison
-
         // Check all combinations of 3 points
         for (int i = 0; i < points.Count; i++)
         {
@@ -694,7 +692,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                     Vector2 v2 = p3 - p1;
                     float crossProduct = v1.x * v2.y - v1.y * v2.x;
 
-                    if (Mathf.Abs(crossProduct) < collinearityThreshold)
+                    if (Mathf.Abs(crossProduct) == 0)
                     {
                         return true; // Found collinear points
                     }
