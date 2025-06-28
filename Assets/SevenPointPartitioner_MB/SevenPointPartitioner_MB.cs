@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using TMPro;
 using Unity.VisualScripting;
+using UnityEngine.UI;
 
 public enum DragState
 {
@@ -38,6 +39,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     public TextMeshProUGUI warningText; // UI Text component to display warnings
     public TextMeshProUGUI solutionCountText; // UI Text component to current selected solution out of how many
+    public Button nextSolutionButton; // UI Button for next solution
+    public Button previousSolutionButton; // UI Button for previous solution
+
     public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f;
     float pointColliderThickness;
@@ -111,6 +115,16 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         InitializeLinesWithPerpArrowsFromPoints();
         UpdateSelectionRadius();
         FindValidPartitionTriangles();
+
+        // Assign button listeners
+        if (nextSolutionButton != null)
+        {
+            nextSolutionButton.onClick.AddListener(ShowNextSolution);
+        }
+        if (previousSolutionButton != null)
+        {
+            previousSolutionButton.onClick.AddListener(ShowPreviousSolution);
+        }
     }
 
     private void InitializeLinesWithPerpArrowsFromPoints()
@@ -156,6 +170,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (points.Count != 7 || hasCollinearPoints)
         {
             hasValidTriangles = false;
+            UpdateSolutionCountDisplay();
+            UpdateTriangleVisibility(); // Ensure triangles are hidden if invalid state
             return;
         }
 
@@ -234,6 +250,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         // Initial visibility setup
         UpdateTriangleVisibility();
         UpdateVisualScale();
+        UpdateSolutionCountDisplay();
     }
 
     /// <summary>
@@ -241,8 +258,11 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// </summary>
     private void UpdateTriangleVisibility()
     {
-        if (!hasValidTriangles || validPartitionTriangles.Count == 0)
-            return;
+        // Disable buttons if no valid triangles or only one solution
+        bool enableButtons = hasValidTriangles && validPartitionTriangles.Count > 1;
+        if (nextSolutionButton != null) nextSolutionButton.interactable = enableButtons;
+        if (previousSolutionButton != null) previousSolutionButton.interactable = enableButtons;
+
 
         // Hide all triangles first
         for (int i = 0; i < validPartitionTriangles.Count; i++)
@@ -251,8 +271,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             SetTriangleVisibility(triangle, false);
         }
 
-        // Show only the current triangle
-        if (currentTriangleIndex < validPartitionTriangles.Count)
+        // Show only the current triangle if valid
+        if (hasValidTriangles && currentTriangleIndex < validPartitionTriangles.Count)
         {
             var currentTriangle = validPartitionTriangles[currentTriangleIndex];
             SetTriangleVisibility(currentTriangle, true);
@@ -697,6 +717,21 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
     }
 
+    private void UpdateSolutionCountDisplay()
+    {
+        if (solutionCountText != null)
+        {
+            if (!hasValidTriangles)
+            {
+                solutionCountText.text = "No Solutions.";
+            }
+            else
+            {
+                solutionCountText.text = string.Format("Solution {0} out of {1}.", currentTriangleIndex + 1, validPartitionTriangles.Count);
+            }
+        }
+    }
+
     private void CheckForPossibleCentres()
     {
         // Skip this logic if we have collinear points
@@ -838,30 +873,20 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             lastMousePosition = Input.mousePosition;
         }
 
-        // Handle triangle cycling
+        // Handle triangle cycling for desktop (middle/right mouse button)
         if (hasValidTriangles && validPartitionTriangles.Count > 1)
         {
-            // Handle spacebar input for cycling through solutions
             if (Input.GetMouseButtonDown((int)MouseButton.Middle)) // Middle mouse button for next
             {
-                currentTriangleIndex = Maths.mod(currentTriangleIndex + 1, validPartitionTriangles.Count);
-                UpdateTriangleVisibility();
+                ShowNextSolution();
             }
             else if (Input.GetMouseButtonDown((int)MouseButton.Right)) // Right mouse button for previous
             {
-                currentTriangleIndex = Maths.mod(currentTriangleIndex - 1, validPartitionTriangles.Count);
-                UpdateTriangleVisibility();
+                ShowPreviousSolution();
             }
         }
 
-        if (!hasValidTriangles)
-        {
-            solutionCountText.text = "No Solutions.";
-        }
-        else
-        {
-            solutionCountText.text = string.Format("Solution {0} out of {1}.", currentTriangleIndex + 1, validPartitionTriangles.Count);
-        }
+        UpdateSolutionCountDisplay();
 
         // Reset highlights
         foreach (Point_MB point in points)
@@ -869,6 +894,28 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         if (closestPointIndexInAllPoints != null)
             points[closestPointIndexInAllPoints.Value].Highlight(true);
+    }
+
+    /// <summary>
+    /// Cycles to the next valid partition triangle. Public for UI button.
+    /// </summary>
+    public void ShowNextSolution()
+    {
+        if (!hasValidTriangles || validPartitionTriangles.Count == 0) return;
+        currentTriangleIndex = Maths.mod(currentTriangleIndex + 1, validPartitionTriangles.Count);
+        UpdateTriangleVisibility();
+        UpdateSolutionCountDisplay();
+    }
+
+    /// <summary>
+    /// Cycles to the previous valid partition triangle. Public for UI button.
+    /// </summary>
+    public void ShowPreviousSolution()
+    {
+        if (!hasValidTriangles || validPartitionTriangles.Count == 0) return;
+        currentTriangleIndex = Maths.mod(currentTriangleIndex - 1, validPartitionTriangles.Count);
+        UpdateTriangleVisibility();
+        UpdateSolutionCountDisplay();
     }
 
     private void HandleZoom(float zoomDelta)
