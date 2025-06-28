@@ -41,6 +41,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     public TextMeshProUGUI solutionCountText; // UI Text component to current selected solution out of how many
     public Button nextSolutionButton; // UI Button for next solution
     public Button previousSolutionButton; // UI Button for previous solution
+    public Button fitToContentButton; // UI Button for fitting view to content
 
     public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f;
@@ -124,6 +125,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (previousSolutionButton != null)
         {
             previousSolutionButton.onClick.AddListener(ShowPreviousSolution);
+        }
+        if (fitToContentButton != null) // Assign listener for the new button
+        {
+            fitToContentButton.onClick.AddListener(FitViewToContent);
         }
     }
 
@@ -222,7 +227,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                     // Check if all three pairs are valid
                     bool pair12Valid = validPairs.Contains((line1, line2)) || validPairs.Contains((line2, line1));
                     bool pair13Valid = validPairs.Contains((line1, line3)) || validPairs.Contains((line3, line1));
-                    bool pair23Valid = validPairs.Contains((line2, line3)) || validPairs.Contains((line3, line2));
+                    bool pair23Valid = validPairs.Contains((line2, line3)) || validPairs.Contains((line3, line1));
 
                     if (pair12Valid && pair13Valid && pair23Valid)
                     {
@@ -908,12 +913,48 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         UpdateSolutionCountDisplay();
     }
 
+    /// <summary>
+    /// Adjusts the camera to fit all points within the view with some padding.
+    /// </summary>
+    public void FitViewToContent()
+    {
+        if (points == null || points.Count == 0 || Camera.main == null)
+            return;
+
+        // Calculate bounds of all points
+        Bounds bounds = new Bounds(points[0].Position, Vector3.zero);
+        foreach (Point_MB point in points)
+        {
+            bounds.Encapsulate(point.Position);
+        }
+
+        // Add some padding to the bounds
+        float padding = 1.2f; // 20% padding
+        float targetOrthographicSize = Mathf.Max(bounds.size.x * Camera.main.aspect, bounds.size.y) / 2f * padding;
+
+        // Set camera's new position and orthographic size
+        Camera.main.transform.position = new Vector3(bounds.center.x, bounds.center.y, Camera.main.transform.position.z);
+        Camera.main.orthographicSize = targetOrthographicSize;
+
+        // Update scrollAmount to reflect the new orthographic size so subsequent zooms are consistent
+        // Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
+        // => 1 + scrollAmount / 5f = log5(Camera.main.orthographicSize)
+        // => scrollAmount / 5f = log5(Camera.main.orthographicSize) - 1
+        // => scrollAmount = 5 * (log5(Camera.main.orthographicSize) - 1)
+        scrollAmount = 5 * (Mathf.Log(Camera.main.orthographicSize, 5f) - 1);
+
+
+        // Update visual scales after camera adjustment
+        UpdateSelectionRadius();
+        UpdateVisualScale();
+    }
+
     private void HandleZoom(float zoomDelta)
     {
         scrollAmount -= zoomDelta;
-        scrollAmount = Mathf.Clamp(scrollAmount, -5f, 5f);
+        // Removed clamping for scrollAmount
         Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
-        Camera.main.orthographicSize = Mathf.Clamp(Camera.main.orthographicSize, -50f, 50f);
+        // Removed clamping for orthographicSize
         UpdateSelectionRadius();
         UpdateVisualScale();
     }
