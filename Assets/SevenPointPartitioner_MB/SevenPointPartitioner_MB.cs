@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using TMPro;
 using Unity.VisualScripting;
-using UnityEngine.UI;
+using UnityEngine.UI; // Required for UI Button
 
 public enum DragState
 {
@@ -873,18 +873,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             lastMousePosition = Input.mousePosition;
         }
 
-        // Handle triangle cycling for desktop (middle/right mouse button)
-        if (hasValidTriangles && validPartitionTriangles.Count > 1)
-        {
-            if (Input.GetMouseButtonDown((int)MouseButton.Middle)) // Middle mouse button for next
-            {
-                ShowNextSolution();
-            }
-            else if (Input.GetMouseButtonDown((int)MouseButton.Right)) // Right mouse button for previous
-            {
-                ShowPreviousSolution();
-            }
-        }
+        // Removed desktop middle and right mouse button input for cycling solutions.
+        // Solution changing is now solely handled by the UI buttons.
 
         UpdateSolutionCountDisplay();
 
@@ -1038,7 +1028,12 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        if (closestPointIndexInAllPoints != null && currentDragState == DragState.None)
+        if (closestPointIndexInAllPoints == null && currentDragState == DragState.None)
+        {
+            currentDragState = DragState.DraggingCamera; // Changed to DraggingCamera to match behavior
+            lastMousePosition = Input.mousePosition;
+        }
+        else if (closestPointIndexInAllPoints != null && currentDragState == DragState.None)
         {
             currentDragState = DragState.DraggingPoint;
             OnBeginDragPoint(eventData);
@@ -1055,6 +1050,12 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         {
             OnDragPoint(eventData);
         }
+        else if (IsDraggingCamera) // Added camera drag handling in OnDrag
+        {
+            Vector3 delta = Camera.main.ScreenToWorldPoint(Input.mousePosition) - Camera.main.ScreenToWorldPoint(lastMousePosition);
+            Camera.main.transform.position -= delta;
+            lastMousePosition = Input.mousePosition;
+        }
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -1069,6 +1070,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
             currentDragState = DragState.None;
             FindValidPartitionTriangles();
+        }
+        else if (IsDraggingCamera) // Added camera drag ending
+        {
+            currentDragState = DragState.None;
         }
     }
 
