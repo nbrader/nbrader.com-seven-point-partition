@@ -965,10 +965,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         {
             Touch touch1 = Input.GetTouch(0);
             Touch touch2 = Input.GetTouch(1);
-
             // Calculate current distance between touches
             float currentPinchDistance = Vector2.Distance(touch1.position, touch2.position);
-
             // Calculate the center point of the pinch in screen coordinates
             Vector2 pinchCenter = (touch1.position + touch2.position) * 0.5f;
 
@@ -977,15 +975,12 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                 // Start pinching - store the world position that corresponds to the pinch center
                 isPinching = true;
                 lastPinchDistance = currentPinchDistance;
-
                 // Convert pinch center to world coordinates and store it
                 Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -Camera.main.transform.position.z);
                 Vector3 worldPinchCenter = Camera.main.ScreenToWorldPoint(screenPoint);
-
                 // Adjust camera position to keep the pinch center at the same world position
                 Vector3 worldOffset = lastMousePosition - worldPinchCenter;
                 Camera.main.transform.position -= worldOffset;
-
                 // Store the initial world position of the pinch center
                 lastPinchWorldCenter = worldPinchCenter;
             }
@@ -993,31 +988,38 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             {
                 // Continue pinching - calculate zoom based on distance change
                 float deltaDistance = currentPinchDistance - lastPinchDistance;
-
                 // Convert distance change to zoom factor (adjust sensitivity as needed)
                 float zoomSensitivity = 0.01f;
                 float zoomDelta = deltaDistance * zoomSensitivity;
-
                 // Store the old orthographic size before zooming
                 float oldOrthographicSize = Camera.main.orthographicSize;
-
                 // Apply zoom
                 HandleZoom(zoomDelta);
-
                 // Calculate how much the world position of the pinch center has changed due to zooming
                 Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -Camera.main.transform.position.z);
                 Vector3 currentWorldPinchCenter = Camera.main.ScreenToWorldPoint(screenPoint);
-
                 // Adjust camera position to keep the pinch center at the same world position
                 Vector3 worldOffset = lastPinchWorldCenter - currentWorldPinchCenter;
                 Camera.main.transform.position += worldOffset;
-
                 lastPinchDistance = currentPinchDistance;
             }
         }
+        else if (Input.touchCount == 1 && isPinching)
+        {
+            // Transitioning from pinch back to single finger - update lastMousePosition to prevent jump
+            isPinching = false;
+            Touch remainingTouch = Input.GetTouch(0);
+            // Convert pinch center to world coordinates and store it
+            Vector3 screenPoint = new Vector3(remainingTouch.position.x, remainingTouch.position.y, -Camera.main.transform.position.z);
+            Vector3 worldTouch = Camera.main.ScreenToWorldPoint(screenPoint);
+            // Adjust camera position to keep the pinch center at the same world position
+            Vector3 worldOffset = lastPinchWorldCenter - worldTouch;
+            Camera.main.transform.position -= worldOffset;
+            lastMousePosition = remainingTouch.position;
+        }
         else
         {
-            // End pinching when we don't have exactly 2 touches
+            // End pinching when we don't have exactly 2 touches and not transitioning to 1 touch
             isPinching = false;
         }
     }
