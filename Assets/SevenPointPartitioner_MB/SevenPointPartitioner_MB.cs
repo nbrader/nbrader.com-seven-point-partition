@@ -80,6 +80,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     private bool isPinching = false;
     private float lastPinchDistance = 0f;
+    private Vector3 lastPinchWorldCenter;
 
     // Colors for valid partition triangles
     private static readonly Color[] pointInclusionColors = new Color[]
@@ -968,11 +969,25 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             // Calculate current distance between touches
             float currentPinchDistance = Vector2.Distance(touch1.position, touch2.position);
 
+            // Calculate the center point of the pinch in screen coordinates
+            Vector2 pinchCenter = (touch1.position + touch2.position) * 0.5f;
+
             if (!isPinching)
             {
-                // Start pinching
+                // Start pinching - store the world position that corresponds to the pinch center
                 isPinching = true;
                 lastPinchDistance = currentPinchDistance;
+
+                // Convert pinch center to world coordinates and store it
+                Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -Camera.main.transform.position.z);
+                Vector3 worldPinchCenter = Camera.main.ScreenToWorldPoint(screenPoint);
+
+                // Adjust camera position to keep the pinch center at the same world position
+                Vector3 worldOffset = lastMousePosition - worldPinchCenter;
+                Camera.main.transform.position -= worldOffset;
+
+                // Store the initial world position of the pinch center
+                lastPinchWorldCenter = worldPinchCenter;
             }
             else
             {
@@ -983,7 +998,19 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                 float zoomSensitivity = 0.01f;
                 float zoomDelta = deltaDistance * zoomSensitivity;
 
+                // Store the old orthographic size before zooming
+                float oldOrthographicSize = Camera.main.orthographicSize;
+
+                // Apply zoom
                 HandleZoom(zoomDelta);
+
+                // Calculate how much the world position of the pinch center has changed due to zooming
+                Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -Camera.main.transform.position.z);
+                Vector3 currentWorldPinchCenter = Camera.main.ScreenToWorldPoint(screenPoint);
+
+                // Adjust camera position to keep the pinch center at the same world position
+                Vector3 worldOffset = lastPinchWorldCenter - currentWorldPinchCenter;
+                Camera.main.transform.position += worldOffset;
 
                 lastPinchDistance = currentPinchDistance;
             }
