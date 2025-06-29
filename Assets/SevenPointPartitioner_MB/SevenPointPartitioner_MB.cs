@@ -991,8 +991,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                 // Convert distance change to zoom factor (adjust sensitivity as needed)
                 float zoomSensitivity = 0.01f;
                 float zoomDelta = deltaDistance * zoomSensitivity;
-                // Store the old orthographic size before zooming
-                float oldOrthographicSize = Camera.main.orthographicSize;
                 // Apply zoom
                 HandleZoom(zoomDelta);
                 // Calculate how much the world position of the pinch center has changed due to zooming
