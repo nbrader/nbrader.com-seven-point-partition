@@ -876,8 +876,11 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         // Handle camera dragging
         if (Input.GetMouseButtonDown((int)MouseButton.Left))
         {
-            // Only start camera dragging if we're not close to any point and not already dragging
-            if (closestPointIndexInAllPoints == null && currentDragState == DragState.None)
+            // Issue #36: Don't start dragging if the pointer is over a UI element (like a button)
+            bool isPointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+
+            // Only start camera dragging if we're not close to any point, not already dragging, and not over UI
+            if (closestPointIndexInAllPoints == null && currentDragState == DragState.None && !isPointerOverUI)
             {
                 currentDragState = DragState.DraggingCamera;
                 lastMousePosition = Input.mousePosition;
@@ -1116,6 +1119,12 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         // Only allow left mouse button to start dragging
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
+
+        // Issue #36: Don't start dragging if the pointer is over a UI element (like a button)
+        if (eventData.pointerEnter != null && eventData.pointerEnter.GetComponent<UnityEngine.UI.Graphic>() != null)
+        {
+            return; // Pointer is over UI, don't drag
+        }
 
         if (closestPointIndexInAllPoints == null && currentDragState == DragState.None)
         {
