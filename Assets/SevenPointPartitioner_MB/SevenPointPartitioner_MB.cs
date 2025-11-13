@@ -955,7 +955,15 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         // Add some padding to the bounds
         float padding = 1.2f; // 20% padding
-        float targetOrthographicSize = Mathf.Max(bounds.size.x * Camera.main.aspect, bounds.size.y) / 2f * padding;
+
+        // Issue #33: Fix calculation for portrait mode
+        // orthographicSize is half the height of the camera view
+        // Camera width = orthographicSize * 2 * aspect
+        // We need: orthographicSize >= bounds.size.y / 2 (for height)
+        //          orthographicSize >= bounds.size.x / (2 * aspect) (for width)
+        float sizeForHeight = bounds.size.y / 2f;
+        float sizeForWidth = bounds.size.x / (2f * Camera.main.aspect);
+        float targetOrthographicSize = Mathf.Max(sizeForHeight, sizeForWidth) * padding;
 
         // Set camera's new position and orthographic size
         Camera.main.transform.position = new Vector3(bounds.center.x, bounds.center.y, Camera.main.transform.position.z);
