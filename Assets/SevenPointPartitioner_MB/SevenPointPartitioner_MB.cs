@@ -65,6 +65,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     private const float SCROLL_ZOOM_BASE = 5f;
     private const float SCROLL_ZOOM_DIVISOR = 5f;
 
+    // Floating point comparison tolerance
+    private const float EPSILON = 1e-6f; // Tolerance for floating point comparisons
+
     // ========== Fields ==========
     private Camera cachedMainCamera;
     private float pointColliderThickness;
@@ -229,6 +232,16 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     {
         validPartitionTriangles.Clear();
 
+        // Input validation
+        if (points == null || points.Count == 0)
+        {
+            Debug.LogWarning("FindValidPartitionTriangles: Points list is null or empty.");
+            hasValidTriangles = false;
+            UpdateSolutionCountDisplay();
+            UpdateTriangleVisibility();
+            return;
+        }
+
         if (points.Count != 7 || hasCollinearPoints)
         {
             hasValidTriangles = false;
@@ -388,7 +401,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             Vector2 pt = p.Position;
             float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
 
-            if (cross == 0)
+            if (Mathf.Abs(cross) < EPSILON)
             {
                 onLineCount++;
             }
@@ -665,9 +678,16 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// <returns>A tuple of 7 booleans indicating inclusion for each point (p1, p2, p3, p4, p5, p6, p7)</returns>
     public (bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) PointInclusions(LineWithPerpArrow_MB lineWithPerpArrow)
     {
-        if (points.Count < 7)
+        // Input validation
+        if (lineWithPerpArrow == null)
         {
-            Debug.LogWarning("PointInclusions requires exactly 7 points, but only " + points.Count + " are available.");
+            Debug.LogWarning("PointInclusions: lineWithPerpArrow is null.");
+            return (false, false, false, false, false, false, false);
+        }
+
+        if (points == null || points.Count < 7)
+        {
+            Debug.LogWarning($"PointInclusions requires exactly 7 points, but only {points?.Count ?? 0} are available.");
             return (false, false, false, false, false, false, false);
         }
 
@@ -777,7 +797,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                     Vector2 v2 = p3 - p1;
                     float crossProduct = v1.x * v2.y - v1.y * v2.x;
 
-                    if (Mathf.Abs(crossProduct) == 0)
+                    if (Mathf.Abs(crossProduct) < EPSILON)
                     {
                         return true; // Found collinear points
                     }
@@ -902,6 +922,19 @@ Press Right Mouse:";
     /// <param name="targetPosition">New world position for the point</param>
     public void MovePoint(int pointIndex, Vector3 targetPosition)
     {
+        // Input validation
+        if (points == null || points.Count == 0)
+        {
+            Debug.LogWarning("MovePoint: Points list is null or empty.");
+            return;
+        }
+
+        if (pointIndex < 0 || pointIndex >= points.Count)
+        {
+            Debug.LogWarning($"MovePoint: Point index {pointIndex} is out of range (0-{points.Count - 1}).");
+            return;
+        }
+
         points[pointIndex].Position = targetPosition;
 
         // Update colors when points move
@@ -915,6 +948,13 @@ Press Right Mouse:";
     /// <returns>Tuple containing the index of the closest point and its distance</returns>
     public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
     {
+        // Input validation
+        if (points == null || points.Count == 0)
+        {
+            Debug.LogWarning("FindClosestPoint: Points list is null or empty.");
+            return (closestPoint: -1, closestDistance: float.MaxValue);
+        }
+
         List<Point_MB> allPoints = points;
         Point_MB point = allPoints[0];
         float minDistance = Vector3.Distance(position, point.Position);
@@ -1250,13 +1290,12 @@ Press Right Mouse:";
             Vector2 pt = p.Position;
             float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
 
-            if (cross != 0f)
-                continue; // Point is on the lineWithPerpArrow
+            if (Mathf.Abs(cross) < EPSILON)
+                continue; // Point is on the lineWithPerpArrow, skip it
 
             if (cross > 0)
                 leftCount++;
-
-            if (cross < 0)
+            else if (cross < 0)
                 rightCount++;
         }
 
