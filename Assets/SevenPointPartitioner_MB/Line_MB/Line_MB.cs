@@ -3,18 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 
+/// <summary>
+/// Represents a line segment in the partition visualization.
+/// Handles rendering and geometric calculations for lines defined by two input points.
+/// </summary>
 public class Line_MB : MonoBehaviour
 {
     [HideInInspector]
     public SevenPointPartitioner_MB parentSevenPointPartitioner;
-    public SpriteRenderer spriteRenderer;
 
+    public SpriteRenderer spriteRenderer;
     public Transform lineTransform;
     public Transform inputPoint1;
     public Transform inputPoint2;
     public Transform endPoint1;
     public Transform endPoint2;
-
     public Color colour;
 
     // Instance-specific thickness that can be set by external scripts
