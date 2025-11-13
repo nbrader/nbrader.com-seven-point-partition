@@ -39,6 +39,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     public TextMeshProUGUI warningText; // UI Text component to display warnings
     public TextMeshProUGUI solutionCountText; // UI Text component to current selected solution out of how many
+    public TextMeshProUGUI instructionsText; // UI Text component to display control instructions
     public Button nextSolutionButton; // UI Button for next solution
     public Button previousSolutionButton; // UI Button for previous solution
     public Button fitToContentButton; // UI Button for fitting view to content
@@ -131,6 +132,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         {
             fitToContentButton.onClick.AddListener(FitViewToContent);
         }
+
+        // Issue #28: Update instructions based on device type
+        UpdateInstructions();
     }
 
     private void InitializeLinesWithPerpArrowsFromPoints()
@@ -756,6 +760,46 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             {
                 solutionCountText.text = string.Format("Solution {0} out of {1}.", currentTriangleIndex + 1, validPartitionTriangles.Count);
             }
+        }
+    }
+
+    /// <summary>
+    /// Issue #28: Updates control instructions based on device type (mouse vs touch)
+    /// </summary>
+    private void UpdateInstructions()
+    {
+        if (instructionsText == null)
+            return;
+
+        bool isTouchDevice = Input.touchSupported && Application.isMobilePlatform;
+
+        if (isTouchDevice)
+        {
+            // Mobile/Touch instructions
+            instructionsText.text = @"Tap & Drag (On Point):
+
+Tap & Drag (On Background):
+
+Pinch
+(On Background):
+
+Use Next Button:
+
+Use Previous Button:";
+        }
+        else
+        {
+            // Desktop/Mouse instructions
+            instructionsText.text = @"Left Click & Drag (On Point):
+
+Left Click & Drag (On Background):
+
+Scroll
+(On Background):
+
+Press Middle Mouse:
+
+Press Right Mouse:";
         }
     }
 
