@@ -1006,17 +1006,14 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
             if (!isPinching)
             {
-                // Start pinching - store the world position that corresponds to the pinch center
+                // Issue #23: Start pinching - store the world position at the pinch center
                 isPinching = true;
                 lastPinchDistance = currentPinchDistance;
                 // Convert pinch center to world coordinates and store it
                 Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -Camera.main.transform.position.z);
-                Vector3 worldPinchCenter = Camera.main.ScreenToWorldPoint(screenPoint);
-                // Adjust camera position to keep the pinch center at the same world position
-                Vector3 worldOffset = lastMousePosition - worldPinchCenter;
-                Camera.main.transform.position -= worldOffset;
-                // Store the initial world position of the pinch center
-                lastPinchWorldCenter = worldPinchCenter;
+                lastPinchWorldCenter = Camera.main.ScreenToWorldPoint(screenPoint);
+                // Note: Don't adjust camera position here - just store the world position
+                // This prevents jumps when transitioning from 1 finger to 2 fingers
             }
             else
             {
@@ -1038,15 +1035,11 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
         else if (Input.touchCount == 1 && isPinching)
         {
-            // Transitioning from pinch back to single finger - update lastMousePosition to prevent jump
+            // Issue #23: Transitioning from pinch (2 fingers) back to single finger drag
             isPinching = false;
             Touch remainingTouch = Input.GetTouch(0);
-            // Convert pinch center to world coordinates and store it
-            Vector3 screenPoint = new Vector3(remainingTouch.position.x, remainingTouch.position.y, -Camera.main.transform.position.z);
-            Vector3 worldTouch = Camera.main.ScreenToWorldPoint(screenPoint);
-            // Adjust camera position to keep the pinch center at the same world position
-            Vector3 worldOffset = lastPinchWorldCenter - worldTouch;
-            Camera.main.transform.position -= worldOffset;
+            // Simply update lastMousePosition to the remaining touch position
+            // Don't adjust camera - this prevents jumps when lifting one finger
             lastMousePosition = remainingTouch.position;
         }
         else
