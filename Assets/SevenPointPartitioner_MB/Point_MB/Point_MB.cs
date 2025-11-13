@@ -1,14 +1,24 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
+/// <summary>
+/// Represents a draggable point in the seven-point partition problem.
+/// Handles user interaction and visual representation of a single point.
+/// </summary>
 public class Point_MB : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler
 {
     [HideInInspector]
     public SevenPointPartitioner_MB parentSevenPointPartitioner;
+
     public SpriteRenderer spriteRenderer; // This should be the SpriteRenderer on the child GameObject
     public Color normalColour = Color.red;
-    Color highlightedColour = Color.grey;
+    private Color highlightedColour = Color.grey;
+    [SerializeField]
+    private CircleCollider2D circleCollider;
 
+    /// <summary>
+    /// Gets or sets the world position of this point.
+    /// </summary>
     public Vector3 Position { get { return transform.position; } set { transform.position = value; } }
 
     /// <summary>
@@ -29,23 +39,60 @@ public class Point_MB : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDrag
         }
     }
 
+    private void Awake()
+    {
+        if (circleCollider == null)
+        {
+            circleCollider = GetComponent<CircleCollider2D>();
+        }
+    }
+
+    /// <summary>
+    /// Called when the user begins dragging this point. Delegates to parent partitioner.
+    /// </summary>
     public void OnBeginDrag(PointerEventData eventData)
     {
         parentSevenPointPartitioner.OnBeginDrag(eventData);
     }
 
+    /// <summary>
+    /// Called while the user is dragging this point. Delegates to parent partitioner.
+    /// </summary>
     public void OnDrag(PointerEventData eventData)
     {
         parentSevenPointPartitioner.OnDrag(eventData);
     }
 
+    /// <summary>
+    /// Called when the user stops dragging this point. Delegates to parent partitioner.
+    /// </summary>
     public void OnEndDrag(PointerEventData eventData)
     {
         parentSevenPointPartitioner.OnEndDrag(eventData);
     }
 
+    /// <summary>
+    /// Sets the visual highlight state of this point.
+    /// </summary>
+    /// <param name="isHighlight">True to show as highlighted, false for normal appearance</param>
     public void Highlight(bool isHighlight)
     {
         spriteRenderer.color = isHighlight ? (normalColour * 0.5f + highlightedColour * 0.5f) : normalColour;
+    }
+
+    /// <summary>
+    /// Updates the interactive radius of the underlying collider so dragging aligns with the hover radius.
+    /// </summary>
+    public void SetSelectionRadius(float radius)
+    {
+        if (circleCollider == null)
+        {
+            circleCollider = GetComponent<CircleCollider2D>();
+        }
+
+        if (circleCollider != null)
+        {
+            circleCollider.radius = Mathf.Max(0f, radius);
+        }
     }
 }

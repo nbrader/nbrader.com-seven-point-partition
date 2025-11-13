@@ -39,13 +39,35 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     public TextMeshProUGUI warningText; // UI Text component to display warnings
     public TextMeshProUGUI solutionCountText; // UI Text component to current selected solution out of how many
+    public TextMeshProUGUI instructionsText; // UI Text component to display control instructions
+    public GameObject helpPanel; // UI Panel with explanation of the app (Issue #35)
     public Button nextSolutionButton; // UI Button for next solution
     public Button previousSolutionButton; // UI Button for previous solution
     public Button fitToContentButton; // UI Button for fitting view to content
+    public Button helpButton; // UI Button to toggle help panel (Issue #35)
 
+    // ========== Constants ==========
     public static readonly float lineVisibleThickness = 0.1f;
-    readonly float basePointColliderThickness = 0.1f;
-    float pointColliderThickness;
+    private const float BASE_POINT_COLLIDER_THICKNESS = 0.1f;
+    private const float VALID_TRIANGLE_THICKNESS = 0.1f;
+
+    // Zoom and scale constants
+    private const float MIN_ORTHOGRAPHIC_SIZE = 0.01f;
+    private const float MAX_ORTHOGRAPHIC_SIZE = 1000f;
+    private const float MIN_POINT_VISUAL_SCALE = 0.00005f;
+    private const float MIN_LINE_VISUAL_SCALE = 0.0005f;
+    private const float MIN_SELECTION_PIXELS = 50f; // Comfortable touch/click target
+
+    // Camera and view constants
+    private const float FIT_TO_CONTENT_PADDING = 1.2f; // 20% padding
+    private const float MAX_INTERSECTION_DISTANCE_MULTIPLIER = 2f;
+    private const float PINCH_ZOOM_SENSITIVITY = 0.01f;
+    private const float SCROLL_ZOOM_BASE = 5f;
+    private const float SCROLL_ZOOM_DIVISOR = 5f;
+
+    // ========== Fields ==========
+    private Camera cachedMainCamera;
+    private float pointColliderThickness;
 
     // Add a base scale for the points when the camera is at its default orthographic size
     [Header("Scaling")]
@@ -70,7 +92,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     // Valid partition triangles
     [Header("Valid Partition Triangles")]
     public bool showValidPartitionTriangles = true;
-    readonly float validTriangleThickness = 0.1f;
 
     private readonly List<LineWithPerpArrowTriple> validPartitionTriangles = new();
 
@@ -109,6 +130,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     private void Awake()
     {
+        // Cache the main camera for performance
+        cachedMainCamera = Camera.main;
+
         foreach (var point in points)
         {
             point.parentSevenPointPartitioner = this;
@@ -131,8 +155,40 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         {
             fitToContentButton.onClick.AddListener(FitViewToContent);
         }
+        if (helpButton != null) // Issue #35: Assign listener for help button
+        {
+            helpButton.onClick.AddListener(ToggleHelp);
+        }
+
+        // Issue #28: Update instructions based on device type
+        UpdateInstructions();
+
+        // Issue #35: Initialize help panel to hidden state
+        if (helpPanel != null)
+        {
+            helpPanel.SetActive(false);
+        }
     }
 
+    /// <summary>
+    /// Property for safe access to the main camera with null-checking
+    /// </summary>
+    private Camera MainCamera
+    {
+        get
+        {
+            if (cachedMainCamera == null)
+            {
+                cachedMainCamera = Camera.main;
+            }
+            return cachedMainCamera;
+        }
+    }
+
+    /// <summary>
+    /// Creates all possible lines between point pairs for partition detection.
+    /// Generates N*(N-1) lines for N points (42 lines for 7 points).
+    /// </summary>
     private void InitializeLinesWithPerpArrowsFromPoints()
     {
         linesWithPerpArrows = new List<LineWithPerpArrow_MB>();
@@ -172,6 +228,16 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     private void FindValidPartitionTriangles()
     {
         validPartitionTriangles.Clear();
+
+        // Input validation
+        if (points == null || points.Count == 0)
+        {
+            Debug.LogWarning("FindValidPartitionTriangles: Points list is null or empty.");
+            hasValidTriangles = false;
+            UpdateSolutionCountDisplay();
+            UpdateTriangleVisibility();
+            return;
+        }
 
         if (points.Count != 7 || hasCollinearPoints)
         {
@@ -386,8 +452,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     }
 
     /// <summary>
-    /// Placeholder for LEMMA 2 implementation - needs to be implemented based on your specific requirements
-    /// For now, this ensures lines are not identical and checks for basic geometric constraints
+    /// Implements LEMMA 2: Every two splits must give a 1/2/2/2 partition.
+    /// This checks that two lines partition the 7 points into 4 regions with
+    /// 1 point in one region and 2 points in each of the other 3 regions.
     /// </summary>
     private bool SatisfiesLemma2(LineWithPerpArrow_MB line1, LineWithPerpArrow_MB line2)
     {
@@ -400,20 +467,42 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         if (sameEndpoints) return false;
 
-        // TODO: Implement the actual LEMMA 2 conditions based on your geometric requirements
-        // This might involve checking intersection properties, orientation, or other geometric constraints
-
-        // For now, we'll use a basic heuristic: the lines should intersect within a reasonable region
-        // and create meaningful partitions
-        if (GetLineIntersection(line1, line2, out Vector2 intersection))
+        // Check if the lines intersect (parallel lines won't create 4 regions)
+        if (!GetLineIntersection(line1, line2, out Vector2 intersection))
         {
-            // Check if intersection is reasonable (not too far from the point cloud)
-            float maxDistance = GetMaxDistanceFromOrigin() * 2; // Reasonable bounds
-            if (intersection.magnitude > maxDistance)
-                return false;
+            return false; // Lines are parallel
         }
 
-        return true;
+        // Check if intersection is reasonable (not too far from the point cloud)
+        float maxDistance = GetMaxDistanceFromOrigin() * MAX_INTERSECTION_DISTANCE_MULTIPLIER;
+        if (intersection.magnitude > maxDistance)
+            return false;
+
+        // LEMMA 2 implementation: Check for 1/2/2/2 partition
+        // Two lines create 4 regions based on which side of each line points are on
+        int[] regionCounts = new int[4]; // [left-left, left-right, right-left, right-right]
+
+        foreach (Point_MB point in points)
+        {
+            Vector2 pos = point.Position;
+
+            // Determine which side of each line the point is on
+            bool rightOfLine1 = IsPointInLineWithPerpArrowRight(pos, line1);
+            bool rightOfLine2 = IsPointInLineWithPerpArrowRight(pos, line2);
+
+            // Calculate region index (0-3)
+            int regionIndex = (rightOfLine1 ? 1 : 0) + (rightOfLine2 ? 2 : 0);
+            regionCounts[regionIndex]++;
+        }
+
+        // Sort the region counts to check for 1/2/2/2 pattern
+        System.Array.Sort(regionCounts);
+
+        // Check if we have exactly 1, 2, 2, 2 distribution
+        bool isLemma2Valid = (regionCounts[0] == 1 && regionCounts[1] == 2 &&
+                             regionCounts[2] == 2 && regionCounts[3] == 2);
+
+        return isLemma2Valid;
     }
 
     /// <summary>
@@ -549,7 +638,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         // Set visual properties for triangle display
         lineWithPerpArrow.colour = color;
-        lineWithPerpArrow.Thickness = validTriangleThickness;
+        lineWithPerpArrow.Thickness = VALID_TRIANGLE_THICKNESS;
 
         // Triangle visibility will be controlled by the cycling system
         lineWithPerpArrow.ShouldBeVisible += _ => true; // Always allow visibility (controlled by SetActive)
@@ -586,9 +675,16 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// <returns>A tuple of 7 booleans indicating inclusion for each point (p1, p2, p3, p4, p5, p6, p7)</returns>
     public (bool p1, bool p2, bool p3, bool p4, bool p5, bool p6, bool p7) PointInclusions(LineWithPerpArrow_MB lineWithPerpArrow)
     {
-        if (points.Count < 7)
+        // Input validation
+        if (lineWithPerpArrow == null)
         {
-            Debug.LogWarning("PointInclusions requires exactly 7 points, but only " + points.Count + " are available.");
+            Debug.LogWarning("PointInclusions: lineWithPerpArrow is null.");
+            return (false, false, false, false, false, false, false);
+        }
+
+        if (points == null || points.Count < 7)
+        {
+            Debug.LogWarning($"PointInclusions requires exactly 7 points, but only {points?.Count ?? 0} are available.");
             return (false, false, false, false, false, false, false);
         }
 
@@ -674,6 +770,11 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     //    return (inA, inB, inC);
     //}
 
+    /// <summary>
+    /// Checks if any three points are collinear (lie on the same line).
+    /// Uses cross product calculation to detect collinearity within floating-point precision.
+    /// </summary>
+    /// <returns>True if any three points are collinear, false otherwise</returns>
     private bool CheckForCollinearPoints()
     {
         // Check all combinations of 3 points
@@ -704,6 +805,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// Updates the warning text display based on whether collinear points are detected.
+    /// Shows red warning message when 3 or more points lie on the same line.
+    /// </summary>
     private void UpdateWarningDisplay()
     {
         if (warningText != null)
@@ -721,6 +826,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Updates the solution count text showing current solution number out of total found.
+    /// Displays "No Solutions." if no valid partition triangles exist.
+    /// </summary>
     private void UpdateSolutionCountDisplay()
     {
         if (solutionCountText != null)
@@ -736,6 +845,50 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Issue #28: Updates control instructions based on device type (mouse vs touch)
+    /// </summary>
+    private void UpdateInstructions()
+    {
+        if (instructionsText == null)
+            return;
+
+        bool isTouchDevice = Input.touchSupported && Application.isMobilePlatform;
+
+        if (isTouchDevice)
+        {
+            // Mobile/Touch instructions
+            instructionsText.text = @"Tap & Drag (On Point):
+
+Tap & Drag (On Background):
+
+Pinch
+(On Background):
+
+Use Next Button:
+
+Use Previous Button:";
+        }
+        else
+        {
+            // Desktop/Mouse instructions
+            instructionsText.text = @"Left Click & Drag (On Point):
+
+Left Click & Drag (On Background):
+
+Scroll
+(On Background):
+
+Press Middle Mouse:
+
+Press Right Mouse:";
+        }
+    }
+
+    /// <summary>
+    /// Checks and sorts points to identify possible center points for partition triangles.
+    /// Skipped if collinear points are detected.
+    /// </summary>
     private void CheckForPossibleCentres()
     {
         // Skip this logic if we have collinear points
@@ -759,16 +912,46 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         });
     }
 
+    /// <summary>
+    /// Moves a point to a new position and recalculates valid partition triangles.
+    /// </summary>
+    /// <param name="pointIndex">Index of the point to move (0-6 for 7 points)</param>
+    /// <param name="targetPosition">New world position for the point</param>
     public void MovePoint(int pointIndex, Vector3 targetPosition)
     {
+        // Input validation
+        if (points == null || points.Count == 0)
+        {
+            Debug.LogWarning("MovePoint: Points list is null or empty.");
+            return;
+        }
+
+        if (pointIndex < 0 || pointIndex >= points.Count)
+        {
+            Debug.LogWarning($"MovePoint: Point index {pointIndex} is out of range (0-{points.Count - 1}).");
+            return;
+        }
+
         points[pointIndex].Position = targetPosition;
 
         // Update colors when points move
         FindValidPartitionTriangles();
     }
 
+    /// <summary>
+    /// Finds the point closest to a given world position.
+    /// </summary>
+    /// <param name="position">World position to search from</param>
+    /// <returns>Tuple containing the index of the closest point and its distance</returns>
     public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
     {
+        // Input validation
+        if (points == null || points.Count == 0)
+        {
+            Debug.LogWarning("FindClosestPoint: Points list is null or empty.");
+            return (closestPoint: -1, closestDistance: float.MaxValue);
+        }
+
         List<Point_MB> allPoints = points;
         Point_MB point = allPoints[0];
         float minDistance = Vector3.Distance(position, point.Position);
@@ -826,7 +1009,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         CheckForPossibleCentres();
 
-        var pointerPos = Camera.main.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
+        var pointerPos = MainCamera.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
 
         var (closestPoint, closestDistance) = FindClosestPoint(pointerPos);
         closestPointIndexInAllPoints = closestPoint;
@@ -853,8 +1036,11 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         // Handle camera dragging
         if (Input.GetMouseButtonDown((int)MouseButton.Left))
         {
-            // Only start camera dragging if we're not close to any point and not already dragging
-            if (closestPointIndexInAllPoints == null && currentDragState == DragState.None)
+            // Issue #36: Don't start dragging if the pointer is over a UI element (like a button)
+            bool isPointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+
+            // Only start camera dragging if we're not close to any point, not already dragging, and not over UI
+            if (closestPointIndexInAllPoints == null && currentDragState == DragState.None && !isPointerOverUI)
             {
                 currentDragState = DragState.DraggingCamera;
                 lastMousePosition = Input.mousePosition;
@@ -872,8 +1058,8 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         // Only drag camera if we're in camera dragging state
         if (IsDraggingCamera)
         {
-            Vector3 delta = Camera.main.ScreenToWorldPoint(Input.mousePosition) - Camera.main.ScreenToWorldPoint(lastMousePosition);
-            Camera.main.transform.position -= delta;
+            Vector3 delta = MainCamera.ScreenToWorldPoint(Input.mousePosition) - MainCamera.ScreenToWorldPoint(lastMousePosition);
+            MainCamera.transform.position -= delta;
             lastMousePosition = Input.mousePosition;
         }
 
@@ -913,11 +1099,22 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     }
 
     /// <summary>
+    /// Issue #35: Toggles the help panel visibility. Public for UI button.
+    /// </summary>
+    public void ToggleHelp()
+    {
+        if (helpPanel != null)
+        {
+            helpPanel.SetActive(!helpPanel.activeSelf);
+        }
+    }
+
+    /// <summary>
     /// Adjusts the camera to fit all points within the view with some padding.
     /// </summary>
     public void FitViewToContent()
     {
-        if (points == null || points.Count == 0 || Camera.main == null)
+        if (points == null || points.Count == 0 || MainCamera == null)
             return;
 
         // Calculate bounds of all points
@@ -928,19 +1125,23 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
 
         // Add some padding to the bounds
-        float padding = 1.2f; // 20% padding
-        float targetOrthographicSize = Mathf.Max(bounds.size.x * Camera.main.aspect, bounds.size.y) / 2f * padding;
+        // Issue #33: Fix calculation for portrait mode
+        // orthographicSize is half the height of the camera view
+        // Camera width = orthographicSize * 2 * aspect
+        // We need: orthographicSize >= bounds.size.y / 2 (for height)
+        //          orthographicSize >= bounds.size.x / (2 * aspect) (for width)
+        float sizeForHeight = bounds.size.y / 2f;
+        float sizeForWidth = bounds.size.x / (2f * MainCamera.aspect);
+        float targetOrthographicSize = Mathf.Max(sizeForHeight, sizeForWidth) * FIT_TO_CONTENT_PADDING;
 
         // Set camera's new position and orthographic size
-        Camera.main.transform.position = new Vector3(bounds.center.x, bounds.center.y, Camera.main.transform.position.z);
-        Camera.main.orthographicSize = targetOrthographicSize;
+        MainCamera.transform.position = new Vector3(bounds.center.x, bounds.center.y, MainCamera.transform.position.z);
+        MainCamera.orthographicSize = targetOrthographicSize;
 
         // Update scrollAmount to reflect the new orthographic size so subsequent zooms are consistent
-        // Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
-        // => 1 + scrollAmount / 5f = log5(Camera.main.orthographicSize)
-        // => scrollAmount / 5f = log5(Camera.main.orthographicSize) - 1
-        // => scrollAmount = 5 * (log5(Camera.main.orthographicSize) - 1)
-        scrollAmount = 5 * (Mathf.Log(Camera.main.orthographicSize, 5f) - 1);
+        // MainCamera.orthographicSize = Mathf.Pow(SCROLL_ZOOM_BASE, 1 + scrollAmount / SCROLL_ZOOM_DIVISOR)
+        // Solving for scrollAmount: scrollAmount = SCROLL_ZOOM_DIVISOR * (log_base(orthographicSize) - 1)
+        scrollAmount = SCROLL_ZOOM_DIVISOR * (Mathf.Log(MainCamera.orthographicSize, SCROLL_ZOOM_BASE) - 1);
 
 
         // Update visual scales after camera adjustment
@@ -948,16 +1149,31 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         UpdateVisualScale();
     }
 
+    /// <summary>
+    /// Handles zoom operations by adjusting camera orthographic size.
+    /// Clamps zoom to prevent extreme values that cause rendering/precision issues.
+    /// </summary>
+    /// <param name="zoomDelta">Amount to zoom (positive = zoom in, negative = zoom out)</param>
     private void HandleZoom(float zoomDelta)
     {
         scrollAmount -= zoomDelta;
-        // Removed clamping for scrollAmount
-        Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
-        // Removed clamping for orthographicSize
+
+        // Issue #30: Clamp scrollAmount to prevent extreme zoom levels
+        // Using formula: orthographicSize = Mathf.Pow(SCROLL_ZOOM_BASE, 1 + scrollAmount / SCROLL_ZOOM_DIVISOR)
+        float minScrollAmount = SCROLL_ZOOM_DIVISOR * (Mathf.Log(MIN_ORTHOGRAPHIC_SIZE, SCROLL_ZOOM_BASE) - 1f);
+        float maxScrollAmount = SCROLL_ZOOM_DIVISOR * (Mathf.Log(MAX_ORTHOGRAPHIC_SIZE, SCROLL_ZOOM_BASE) - 1f);
+        scrollAmount = Mathf.Clamp(scrollAmount, minScrollAmount, maxScrollAmount);
+
+        MainCamera.orthographicSize = Mathf.Pow(SCROLL_ZOOM_BASE, 1 + scrollAmount / SCROLL_ZOOM_DIVISOR);
         UpdateSelectionRadius();
         UpdateVisualScale();
     }
 
+    /// <summary>
+    /// Handles two-finger pinch gestures for zooming on mobile devices.
+    /// Zooms in/out based on distance between touches and maintains the pinch center position.
+    /// Smoothly transitions between 1 and 2 finger touches to prevent view jumps.
+    /// </summary>
     private void HandleMobilePinchZoom()
     {
         // Only process touch input if we have exactly 2 touches
@@ -972,47 +1188,39 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
             if (!isPinching)
             {
-                // Start pinching - store the world position that corresponds to the pinch center
+                // Issue #23: Start pinching - store the world position at the pinch center
                 isPinching = true;
                 lastPinchDistance = currentPinchDistance;
                 // Convert pinch center to world coordinates and store it
-                Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -Camera.main.transform.position.z);
-                Vector3 worldPinchCenter = Camera.main.ScreenToWorldPoint(screenPoint);
-                // Adjust camera position to keep the pinch center at the same world position
-                Vector3 worldOffset = lastMousePosition - worldPinchCenter;
-                Camera.main.transform.position -= worldOffset;
-                // Store the initial world position of the pinch center
-                lastPinchWorldCenter = worldPinchCenter;
+                Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -MainCamera.transform.position.z);
+                lastPinchWorldCenter = MainCamera.ScreenToWorldPoint(screenPoint);
+                // Note: Don't adjust camera position here - just store the world position
+                // This prevents jumps when transitioning from 1 finger to 2 fingers
             }
             else
             {
                 // Continue pinching - calculate zoom based on distance change
                 float deltaDistance = currentPinchDistance - lastPinchDistance;
-                // Convert distance change to zoom factor (adjust sensitivity as needed)
-                float zoomSensitivity = 0.01f;
-                float zoomDelta = deltaDistance * zoomSensitivity;
+                // Convert distance change to zoom factor
+                float zoomDelta = deltaDistance * PINCH_ZOOM_SENSITIVITY;
                 // Apply zoom
                 HandleZoom(zoomDelta);
                 // Calculate how much the world position of the pinch center has changed due to zooming
-                Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -Camera.main.transform.position.z);
-                Vector3 currentWorldPinchCenter = Camera.main.ScreenToWorldPoint(screenPoint);
+                Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -MainCamera.transform.position.z);
+                Vector3 currentWorldPinchCenter = MainCamera.ScreenToWorldPoint(screenPoint);
                 // Adjust camera position to keep the pinch center at the same world position
                 Vector3 worldOffset = lastPinchWorldCenter - currentWorldPinchCenter;
-                Camera.main.transform.position += worldOffset;
+                MainCamera.transform.position += worldOffset;
                 lastPinchDistance = currentPinchDistance;
             }
         }
         else if (Input.touchCount == 1 && isPinching)
         {
-            // Transitioning from pinch back to single finger - update lastMousePosition to prevent jump
+            // Issue #23: Transitioning from pinch (2 fingers) back to single finger drag
             isPinching = false;
             Touch remainingTouch = Input.GetTouch(0);
-            // Convert pinch center to world coordinates and store it
-            Vector3 screenPoint = new Vector3(remainingTouch.position.x, remainingTouch.position.y, -Camera.main.transform.position.z);
-            Vector3 worldTouch = Camera.main.ScreenToWorldPoint(screenPoint);
-            // Adjust camera position to keep the pinch center at the same world position
-            Vector3 worldOffset = lastPinchWorldCenter - worldTouch;
-            Camera.main.transform.position -= worldOffset;
+            // Simply update lastMousePosition to the remaining touch position
+            // Don't adjust camera - this prevents jumps when lifting one finger
             lastMousePosition = remainingTouch.position;
         }
         else
@@ -1028,14 +1236,18 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     /// </summary>
     private void UpdateVisualScale()
     {
-        if (Camera.main != null && Camera.main.orthographic) // Ensure it's an orthographic camera
+        if (MainCamera != null && MainCamera.orthographic) // Ensure it's an orthographic camera
         {
-            float orthographicSize = Camera.main.orthographicSize;
+            float orthographicSize = MainCamera.orthographicSize;
             // The scale factor should be proportional to the orthographic size.
             // If orthographicSize is 1, the scale is basePointVisualScale.
             // If orthographicSize is 2, the scale is 2 * basePointVisualScale.
             float currentPointScale = basePointVisualScale * orthographicSize;
             float currentLineScale = baseLineVisualScale * orthographicSize;
+
+            // Issue #30: Ensure minimum visual scales to prevent invisibility at extreme zoom
+            currentPointScale = Mathf.Max(currentPointScale, MIN_POINT_VISUAL_SCALE);
+            currentLineScale = Mathf.Max(currentLineScale, MIN_LINE_VISUAL_SCALE);
 
             foreach (var point in points)
             {
@@ -1088,11 +1300,22 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         return (leftCount == 3 && rightCount == 2) || (leftCount == 4 && rightCount == 1);
     }
 
+    /// <summary>
+    /// Handles the beginning of a drag operation (point or camera).
+    /// Prevents dragging if pointer is over UI elements.
+    /// </summary>
+    /// <param name="eventData">Pointer event data from Unity input system</param>
     public void OnBeginDrag(PointerEventData eventData)
     {
         // Only allow left mouse button to start dragging
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
+
+        // Issue #36: Don't start dragging if the pointer is over a UI element (like a button)
+        if (eventData.pointerEnter != null && eventData.pointerEnter.GetComponent<UnityEngine.UI.Graphic>() != null)
+        {
+            return; // Pointer is over UI, don't drag
+        }
 
         if (closestPointIndexInAllPoints == null && currentDragState == DragState.None)
         {
@@ -1106,6 +1329,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Handles ongoing drag operations for points or camera movement.
+    /// </summary>
+    /// <param name="eventData">Pointer event data from Unity input system</param>
     public void OnDrag(PointerEventData eventData)
     {
         // Only allow left mouse button to continue dragging
@@ -1118,12 +1345,16 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
         else if (IsDraggingCamera) // Added camera drag handling in OnDrag
         {
-            Vector3 delta = Camera.main.ScreenToWorldPoint(Input.mousePosition) - Camera.main.ScreenToWorldPoint(lastMousePosition);
-            Camera.main.transform.position -= delta;
+            Vector3 delta = MainCamera.ScreenToWorldPoint(Input.mousePosition) - MainCamera.ScreenToWorldPoint(lastMousePosition);
+            MainCamera.transform.position -= delta;
             lastMousePosition = Input.mousePosition;
         }
     }
 
+    /// <summary>
+    /// Handles the end of a drag operation and recalculates partitions if a point was moved.
+    /// </summary>
+    /// <param name="eventData">Pointer event data from Unity input system</param>
     public void OnEndDrag(PointerEventData eventData)
     {
         // Only allow left mouse button to end dragging
@@ -1169,15 +1400,42 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     public bool IsDraggingPoint => currentDragState == DragState.DraggingPoint;
     public bool IsDraggingCamera => currentDragState == DragState.DraggingCamera;
 
+    /// <summary>
+    /// Converts screen coordinates to world coordinates using the main camera.
+    /// </summary>
+    /// <param name="screenPosition">Screen position in pixels</param>
+    /// <returns>World position as Vector3</returns>
     private Vector3 ScreenToWorldPoint(Vector2 screenPosition)
     {
-        Vector3 screenPoint = new(screenPosition.x, screenPosition.y, -Camera.main.transform.position.z);
-        return Camera.main.ScreenToWorldPoint(screenPoint);
+        Vector3 screenPoint = new(screenPosition.x, screenPosition.y, -MainCamera.transform.position.z);
+        return MainCamera.ScreenToWorldPoint(screenPoint);
     }
 
+    /// <summary>
+    /// Updates the point selection/collision radius based on zoom level and screen size.
+    /// Ensures minimum 50-pixel screen-space radius for comfortable touch/click interaction.
+    /// </summary>
     private void UpdateSelectionRadius()
     {
-        float zoomFactor = Camera.main.orthographicSize;
-        pointColliderThickness = basePointColliderThickness * zoomFactor;
+        if (points == null || points.Count == 0)
+            return;
+
+        float zoomFactor = MainCamera.orthographicSize;
+        pointColliderThickness = BASE_POINT_COLLIDER_THICKNESS * zoomFactor;
+
+        // Issue #29: Ensure minimum selection radius in screen space for touch input
+        // Calculate minimum world-space radius that corresponds to MIN_SELECTION_PIXELS on screen
+        float screenHeight = Screen.height;
+        float worldHeight = MainCamera.orthographicSize * 2f;
+        float pixelsPerWorldUnit = screenHeight / worldHeight;
+        float minWorldSpaceRadius = MIN_SELECTION_PIXELS / pixelsPerWorldUnit;
+
+        // Use the larger of the scaled radius or the minimum screen-space radius
+        pointColliderThickness = Mathf.Max(pointColliderThickness, minWorldSpaceRadius);
+
+        foreach (var point in points)
+        {
+            point.SetSelectionRadius(pointColliderThickness);
+        }
     }
 }
