@@ -1211,5 +1211,16 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     {
         float zoomFactor = Camera.main.orthographicSize;
         pointColliderThickness = basePointColliderThickness * zoomFactor;
+
+        // Issue #29: Ensure minimum selection radius in screen space for touch input
+        // Calculate minimum world-space radius that corresponds to ~50 pixels on screen
+        float screenHeight = Screen.height;
+        float worldHeight = Camera.main.orthographicSize * 2f;
+        float pixelsPerWorldUnit = screenHeight / worldHeight;
+        float minScreenSpacePixels = 50f; // Minimum 50 pixels for comfortable touch/click
+        float minWorldSpaceRadius = minScreenSpacePixels / pixelsPerWorldUnit;
+
+        // Use the larger of the scaled radius or the minimum screen-space radius
+        pointColliderThickness = Mathf.Max(pointColliderThickness, minWorldSpaceRadius);
     }
 }
