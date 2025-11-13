@@ -40,9 +40,11 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     public TextMeshProUGUI warningText; // UI Text component to display warnings
     public TextMeshProUGUI solutionCountText; // UI Text component to current selected solution out of how many
     public TextMeshProUGUI instructionsText; // UI Text component to display control instructions
+    public GameObject helpPanel; // UI Panel with explanation of the app (Issue #35)
     public Button nextSolutionButton; // UI Button for next solution
     public Button previousSolutionButton; // UI Button for previous solution
     public Button fitToContentButton; // UI Button for fitting view to content
+    public Button helpButton; // UI Button to toggle help panel (Issue #35)
 
     public static readonly float lineVisibleThickness = 0.1f;
     readonly float basePointColliderThickness = 0.1f;
@@ -132,9 +134,19 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         {
             fitToContentButton.onClick.AddListener(FitViewToContent);
         }
+        if (helpButton != null) // Issue #35: Assign listener for help button
+        {
+            helpButton.onClick.AddListener(ToggleHelp);
+        }
 
         // Issue #28: Update instructions based on device type
         UpdateInstructions();
+
+        // Issue #35: Initialize help panel to hidden state
+        if (helpPanel != null)
+        {
+            helpPanel.SetActive(false);
+        }
     }
 
     private void InitializeLinesWithPerpArrowsFromPoints()
@@ -980,6 +992,17 @@ Press Right Mouse:";
         currentTriangleIndex = Maths.mod(currentTriangleIndex - 1, validPartitionTriangles.Count);
         UpdateTriangleVisibility();
         UpdateSolutionCountDisplay();
+    }
+
+    /// <summary>
+    /// Issue #35: Toggles the help panel visibility. Public for UI button.
+    /// </summary>
+    public void ToggleHelp()
+    {
+        if (helpPanel != null)
+        {
+            helpPanel.SetActive(!helpPanel.activeSelf);
+        }
     }
 
     /// <summary>
