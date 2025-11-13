@@ -386,8 +386,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     }
 
     /// <summary>
-    /// Placeholder for LEMMA 2 implementation - needs to be implemented based on your specific requirements
-    /// For now, this ensures lines are not identical and checks for basic geometric constraints
+    /// Implements LEMMA 2: Every two splits must give a 1/2/2/2 partition.
+    /// This checks that two lines partition the 7 points into 4 regions with
+    /// 1 point in one region and 2 points in each of the other 3 regions.
     /// </summary>
     private bool SatisfiesLemma2(LineWithPerpArrow_MB line1, LineWithPerpArrow_MB line2)
     {
@@ -400,20 +401,42 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         if (sameEndpoints) return false;
 
-        // TODO: Implement the actual LEMMA 2 conditions based on your geometric requirements
-        // This might involve checking intersection properties, orientation, or other geometric constraints
-
-        // For now, we'll use a basic heuristic: the lines should intersect within a reasonable region
-        // and create meaningful partitions
-        if (GetLineIntersection(line1, line2, out Vector2 intersection))
+        // Check if the lines intersect (parallel lines won't create 4 regions)
+        if (!GetLineIntersection(line1, line2, out Vector2 intersection))
         {
-            // Check if intersection is reasonable (not too far from the point cloud)
-            float maxDistance = GetMaxDistanceFromOrigin() * 2; // Reasonable bounds
-            if (intersection.magnitude > maxDistance)
-                return false;
+            return false; // Lines are parallel
         }
 
-        return true;
+        // Check if intersection is reasonable (not too far from the point cloud)
+        float maxDistance = GetMaxDistanceFromOrigin() * 2; // Reasonable bounds
+        if (intersection.magnitude > maxDistance)
+            return false;
+
+        // LEMMA 2 implementation: Check for 1/2/2/2 partition
+        // Two lines create 4 regions based on which side of each line points are on
+        int[] regionCounts = new int[4]; // [left-left, left-right, right-left, right-right]
+
+        foreach (Point_MB point in points)
+        {
+            Vector2 pos = point.Position;
+
+            // Determine which side of each line the point is on
+            bool rightOfLine1 = IsPointInLineWithPerpArrowRight(pos, line1);
+            bool rightOfLine2 = IsPointInLineWithPerpArrowRight(pos, line2);
+
+            // Calculate region index (0-3)
+            int regionIndex = (rightOfLine1 ? 1 : 0) + (rightOfLine2 ? 2 : 0);
+            regionCounts[regionIndex]++;
+        }
+
+        // Sort the region counts to check for 1/2/2/2 pattern
+        System.Array.Sort(regionCounts);
+
+        // Check if we have exactly 1, 2, 2, 2 distribution
+        bool isLemma2Valid = (regionCounts[0] == 1 && regionCounts[1] == 2 &&
+                             regionCounts[2] == 2 && regionCounts[3] == 2);
+
+        return isLemma2Valid;
     }
 
     /// <summary>
