@@ -185,6 +185,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Creates all possible lines between point pairs for partition detection.
+    /// Generates N*(N-1) lines for N points (42 lines for 7 points).
+    /// </summary>
     private void InitializeLinesWithPerpArrowsFromPoints()
     {
         linesWithPerpArrows = new List<LineWithPerpArrow_MB>();
@@ -749,6 +753,11 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     //    return (inA, inB, inC);
     //}
 
+    /// <summary>
+    /// Checks if any three points are collinear (lie on the same line).
+    /// Uses cross product calculation to detect collinearity within floating-point precision.
+    /// </summary>
+    /// <returns>True if any three points are collinear, false otherwise</returns>
     private bool CheckForCollinearPoints()
     {
         // Check all combinations of 3 points
@@ -779,6 +788,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// Updates the warning text display based on whether collinear points are detected.
+    /// Shows red warning message when 3 or more points lie on the same line.
+    /// </summary>
     private void UpdateWarningDisplay()
     {
         if (warningText != null)
@@ -796,6 +809,10 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Updates the solution count text showing current solution number out of total found.
+    /// Displays "No Solutions." if no valid partition triangles exist.
+    /// </summary>
     private void UpdateSolutionCountDisplay()
     {
         if (solutionCountText != null)
@@ -851,6 +868,10 @@ Press Right Mouse:";
         }
     }
 
+    /// <summary>
+    /// Checks and sorts points to identify possible center points for partition triangles.
+    /// Skipped if collinear points are detected.
+    /// </summary>
     private void CheckForPossibleCentres()
     {
         // Skip this logic if we have collinear points
@@ -874,6 +895,11 @@ Press Right Mouse:";
         });
     }
 
+    /// <summary>
+    /// Moves a point to a new position and recalculates valid partition triangles.
+    /// </summary>
+    /// <param name="pointIndex">Index of the point to move (0-6 for 7 points)</param>
+    /// <param name="targetPosition">New world position for the point</param>
     public void MovePoint(int pointIndex, Vector3 targetPosition)
     {
         points[pointIndex].Position = targetPosition;
@@ -882,6 +908,11 @@ Press Right Mouse:";
         FindValidPartitionTriangles();
     }
 
+    /// <summary>
+    /// Finds the point closest to a given world position.
+    /// </summary>
+    /// <param name="position">World position to search from</param>
+    /// <returns>Tuple containing the index of the closest point and its distance</returns>
     public (int closestPoint, float closestDistance) FindClosestPoint(Vector3 position)
     {
         List<Point_MB> allPoints = points;
@@ -1081,6 +1112,11 @@ Press Right Mouse:";
         UpdateVisualScale();
     }
 
+    /// <summary>
+    /// Handles zoom operations by adjusting camera orthographic size.
+    /// Clamps zoom to prevent extreme values that cause rendering/precision issues.
+    /// </summary>
+    /// <param name="zoomDelta">Amount to zoom (positive = zoom in, negative = zoom out)</param>
     private void HandleZoom(float zoomDelta)
     {
         scrollAmount -= zoomDelta;
@@ -1096,6 +1132,11 @@ Press Right Mouse:";
         UpdateVisualScale();
     }
 
+    /// <summary>
+    /// Handles two-finger pinch gestures for zooming on mobile devices.
+    /// Zooms in/out based on distance between touches and maintains the pinch center position.
+    /// Smoothly transitions between 1 and 2 finger touches to prevent view jumps.
+    /// </summary>
     private void HandleMobilePinchZoom()
     {
         // Only process touch input if we have exactly 2 touches
@@ -1222,6 +1263,11 @@ Press Right Mouse:";
         return (leftCount == 3 && rightCount == 2) || (leftCount == 4 && rightCount == 1);
     }
 
+    /// <summary>
+    /// Handles the beginning of a drag operation (point or camera).
+    /// Prevents dragging if pointer is over UI elements.
+    /// </summary>
+    /// <param name="eventData">Pointer event data from Unity input system</param>
     public void OnBeginDrag(PointerEventData eventData)
     {
         // Only allow left mouse button to start dragging
@@ -1246,6 +1292,10 @@ Press Right Mouse:";
         }
     }
 
+    /// <summary>
+    /// Handles ongoing drag operations for points or camera movement.
+    /// </summary>
+    /// <param name="eventData">Pointer event data from Unity input system</param>
     public void OnDrag(PointerEventData eventData)
     {
         // Only allow left mouse button to continue dragging
@@ -1264,6 +1314,10 @@ Press Right Mouse:";
         }
     }
 
+    /// <summary>
+    /// Handles the end of a drag operation and recalculates partitions if a point was moved.
+    /// </summary>
+    /// <param name="eventData">Pointer event data from Unity input system</param>
     public void OnEndDrag(PointerEventData eventData)
     {
         // Only allow left mouse button to end dragging
@@ -1309,12 +1363,21 @@ Press Right Mouse:";
     public bool IsDraggingPoint => currentDragState == DragState.DraggingPoint;
     public bool IsDraggingCamera => currentDragState == DragState.DraggingCamera;
 
+    /// <summary>
+    /// Converts screen coordinates to world coordinates using the main camera.
+    /// </summary>
+    /// <param name="screenPosition">Screen position in pixels</param>
+    /// <returns>World position as Vector3</returns>
     private Vector3 ScreenToWorldPoint(Vector2 screenPosition)
     {
         Vector3 screenPoint = new(screenPosition.x, screenPosition.y, -MainCamera.transform.position.z);
         return MainCamera.ScreenToWorldPoint(screenPoint);
     }
 
+    /// <summary>
+    /// Updates the point selection/collision radius based on zoom level and screen size.
+    /// Ensures minimum 50-pixel screen-space radius for comfortable touch/click interaction.
+    /// </summary>
     private void UpdateSelectionRadius()
     {
         float zoomFactor = MainCamera.orthographicSize;
