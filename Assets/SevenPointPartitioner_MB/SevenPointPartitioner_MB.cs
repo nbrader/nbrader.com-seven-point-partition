@@ -1417,6 +1417,9 @@ Press Right Mouse:";
     /// </summary>
     private void UpdateSelectionRadius()
     {
+        if (points == null || points.Count == 0)
+            return;
+
         float zoomFactor = MainCamera.orthographicSize;
         pointColliderThickness = BASE_POINT_COLLIDER_THICKNESS * zoomFactor;
 
@@ -1429,5 +1432,10 @@ Press Right Mouse:";
 
         // Use the larger of the scaled radius or the minimum screen-space radius
         pointColliderThickness = Mathf.Max(pointColliderThickness, minWorldSpaceRadius);
+
+        foreach (var point in points)
+        {
+            point.SetSelectionRadius(pointColliderThickness);
+        }
     }
 }

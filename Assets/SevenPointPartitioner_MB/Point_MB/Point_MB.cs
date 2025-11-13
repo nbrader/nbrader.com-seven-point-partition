@@ -13,6 +13,8 @@ public class Point_MB : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDrag
     public SpriteRenderer spriteRenderer; // This should be the SpriteRenderer on the child GameObject
     public Color normalColour = Color.red;
     private Color highlightedColour = Color.grey;
+    [SerializeField]
+    private CircleCollider2D circleCollider;
 
     /// <summary>
     /// Gets or sets the world position of this point.
@@ -34,6 +36,14 @@ public class Point_MB : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDrag
         else
         {
             Debug.LogWarning("SpriteRenderer not assigned to Point_MB. Cannot set sprite scale.");
+        }
+    }
+
+    private void Awake()
+    {
+        if (circleCollider == null)
+        {
+            circleCollider = GetComponent<CircleCollider2D>();
         }
     }
 
@@ -68,5 +78,21 @@ public class Point_MB : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDrag
     public void Highlight(bool isHighlight)
     {
         spriteRenderer.color = isHighlight ? (normalColour * 0.5f + highlightedColour * 0.5f) : normalColour;
+    }
+
+    /// <summary>
+    /// Updates the interactive radius of the underlying collider so dragging aligns with the hover radius.
+    /// </summary>
+    public void SetSelectionRadius(float radius)
+    {
+        if (circleCollider == null)
+        {
+            circleCollider = GetComponent<CircleCollider2D>();
+        }
+
+        if (circleCollider != null)
+        {
+            circleCollider.radius = Mathf.Max(0f, radius);
+        }
     }
 }
