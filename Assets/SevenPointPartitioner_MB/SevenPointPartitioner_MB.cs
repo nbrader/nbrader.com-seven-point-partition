@@ -1029,9 +1029,18 @@ Press Right Mouse:";
     private void HandleZoom(float zoomDelta)
     {
         scrollAmount -= zoomDelta;
-        // Removed clamping for scrollAmount
+
+        // Issue #30: Clamp scrollAmount to prevent extreme zoom levels
+        // Min zoom: orthographicSize = 0.01 (very zoomed in)
+        // Max zoom: orthographicSize = 1000 (very zoomed out)
+        // Using formula: orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f)
+        // For min: 0.01 = 5^(1 + s/5) => log5(0.01) = 1 + s/5 => s = 5*(log5(0.01) - 1)
+        // For max: 1000 = 5^(1 + s/5) => log5(1000) = 1 + s/5 => s = 5*(log5(1000) - 1)
+        float minScrollAmount = 5f * (Mathf.Log(0.01f, 5f) - 1f); // ~-21.51
+        float maxScrollAmount = 5f * (Mathf.Log(1000f, 5f) - 1f); // ~16.51
+        scrollAmount = Mathf.Clamp(scrollAmount, minScrollAmount, maxScrollAmount);
+
         Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
-        // Removed clamping for orthographicSize
         UpdateSelectionRadius();
         UpdateVisualScale();
     }
@@ -1107,6 +1116,12 @@ Press Right Mouse:";
             // If orthographicSize is 2, the scale is 2 * basePointVisualScale.
             float currentPointScale = basePointVisualScale * orthographicSize;
             float currentLineScale = baseLineVisualScale * orthographicSize;
+
+            // Issue #30: Ensure minimum visual scales to prevent invisibility at extreme zoom
+            float minPointScale = 0.00005f; // Minimum point visual scale
+            float minLineScale = 0.0005f;   // Minimum line visual scale
+            currentPointScale = Mathf.Max(currentPointScale, minPointScale);
+            currentLineScale = Mathf.Max(currentLineScale, minLineScale);
 
             foreach (var point in points)
             {
