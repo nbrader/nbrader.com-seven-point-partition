@@ -46,9 +46,28 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     public Button fitToContentButton; // UI Button for fitting view to content
     public Button helpButton; // UI Button to toggle help panel (Issue #35)
 
+    // ========== Constants ==========
     public static readonly float lineVisibleThickness = 0.1f;
-    readonly float basePointColliderThickness = 0.1f;
-    float pointColliderThickness;
+    private const float BASE_POINT_COLLIDER_THICKNESS = 0.1f;
+    private const float VALID_TRIANGLE_THICKNESS = 0.1f;
+
+    // Zoom and scale constants
+    private const float MIN_ORTHOGRAPHIC_SIZE = 0.01f;
+    private const float MAX_ORTHOGRAPHIC_SIZE = 1000f;
+    private const float MIN_POINT_VISUAL_SCALE = 0.00005f;
+    private const float MIN_LINE_VISUAL_SCALE = 0.0005f;
+    private const float MIN_SELECTION_PIXELS = 50f; // Comfortable touch/click target
+
+    // Camera and view constants
+    private const float FIT_TO_CONTENT_PADDING = 1.2f; // 20% padding
+    private const float MAX_INTERSECTION_DISTANCE_MULTIPLIER = 2f;
+    private const float PINCH_ZOOM_SENSITIVITY = 0.01f;
+    private const float SCROLL_ZOOM_BASE = 5f;
+    private const float SCROLL_ZOOM_DIVISOR = 5f;
+
+    // ========== Fields ==========
+    private Camera cachedMainCamera;
+    private float pointColliderThickness;
 
     // Add a base scale for the points when the camera is at its default orthographic size
     [Header("Scaling")]
@@ -73,7 +92,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     // Valid partition triangles
     [Header("Valid Partition Triangles")]
     public bool showValidPartitionTriangles = true;
-    readonly float validTriangleThickness = 0.1f;
 
     private readonly List<LineWithPerpArrowTriple> validPartitionTriangles = new();
 
@@ -112,6 +130,9 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
     private void Awake()
     {
+        // Cache the main camera for performance
+        cachedMainCamera = Camera.main;
+
         foreach (var point in points)
         {
             point.parentSevenPointPartitioner = this;
@@ -146,6 +167,21 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         if (helpPanel != null)
         {
             helpPanel.SetActive(false);
+        }
+    }
+
+    /// <summary>
+    /// Property for safe access to the main camera with null-checking
+    /// </summary>
+    private Camera MainCamera
+    {
+        get
+        {
+            if (cachedMainCamera == null)
+            {
+                cachedMainCamera = Camera.main;
+            }
+            return cachedMainCamera;
         }
     }
 
@@ -424,7 +460,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
         }
 
         // Check if intersection is reasonable (not too far from the point cloud)
-        float maxDistance = GetMaxDistanceFromOrigin() * 2; // Reasonable bounds
+        float maxDistance = GetMaxDistanceFromOrigin() * MAX_INTERSECTION_DISTANCE_MULTIPLIER;
         if (intersection.magnitude > maxDistance)
             return false;
 
@@ -588,7 +624,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
 
         // Set visual properties for triangle display
         lineWithPerpArrow.colour = color;
-        lineWithPerpArrow.Thickness = validTriangleThickness;
+        lineWithPerpArrow.Thickness = VALID_TRIANGLE_THICKNESS;
 
         // Triangle visibility will be controlled by the cycling system
         lineWithPerpArrow.ShouldBeVisible += _ => true; // Always allow visibility (controlled by SetActive)
@@ -905,7 +941,7 @@ Press Right Mouse:";
 
         CheckForPossibleCentres();
 
-        var pointerPos = Camera.main.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
+        var pointerPos = MainCamera.ScreenToWorldPoint(Input.mousePosition) + Vector3.forward * 10;
 
         var (closestPoint, closestDistance) = FindClosestPoint(pointerPos);
         closestPointIndexInAllPoints = closestPoint;
@@ -954,8 +990,8 @@ Press Right Mouse:";
         // Only drag camera if we're in camera dragging state
         if (IsDraggingCamera)
         {
-            Vector3 delta = Camera.main.ScreenToWorldPoint(Input.mousePosition) - Camera.main.ScreenToWorldPoint(lastMousePosition);
-            Camera.main.transform.position -= delta;
+            Vector3 delta = MainCamera.ScreenToWorldPoint(Input.mousePosition) - MainCamera.ScreenToWorldPoint(lastMousePosition);
+            MainCamera.transform.position -= delta;
             lastMousePosition = Input.mousePosition;
         }
 
@@ -1010,7 +1046,7 @@ Press Right Mouse:";
     /// </summary>
     public void FitViewToContent()
     {
-        if (points == null || points.Count == 0 || Camera.main == null)
+        if (points == null || points.Count == 0 || MainCamera == null)
             return;
 
         // Calculate bounds of all points
@@ -1021,27 +1057,23 @@ Press Right Mouse:";
         }
 
         // Add some padding to the bounds
-        float padding = 1.2f; // 20% padding
-
         // Issue #33: Fix calculation for portrait mode
         // orthographicSize is half the height of the camera view
         // Camera width = orthographicSize * 2 * aspect
         // We need: orthographicSize >= bounds.size.y / 2 (for height)
         //          orthographicSize >= bounds.size.x / (2 * aspect) (for width)
         float sizeForHeight = bounds.size.y / 2f;
-        float sizeForWidth = bounds.size.x / (2f * Camera.main.aspect);
-        float targetOrthographicSize = Mathf.Max(sizeForHeight, sizeForWidth) * padding;
+        float sizeForWidth = bounds.size.x / (2f * MainCamera.aspect);
+        float targetOrthographicSize = Mathf.Max(sizeForHeight, sizeForWidth) * FIT_TO_CONTENT_PADDING;
 
         // Set camera's new position and orthographic size
-        Camera.main.transform.position = new Vector3(bounds.center.x, bounds.center.y, Camera.main.transform.position.z);
-        Camera.main.orthographicSize = targetOrthographicSize;
+        MainCamera.transform.position = new Vector3(bounds.center.x, bounds.center.y, MainCamera.transform.position.z);
+        MainCamera.orthographicSize = targetOrthographicSize;
 
         // Update scrollAmount to reflect the new orthographic size so subsequent zooms are consistent
-        // Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
-        // => 1 + scrollAmount / 5f = log5(Camera.main.orthographicSize)
-        // => scrollAmount / 5f = log5(Camera.main.orthographicSize) - 1
-        // => scrollAmount = 5 * (log5(Camera.main.orthographicSize) - 1)
-        scrollAmount = 5 * (Mathf.Log(Camera.main.orthographicSize, 5f) - 1);
+        // MainCamera.orthographicSize = Mathf.Pow(SCROLL_ZOOM_BASE, 1 + scrollAmount / SCROLL_ZOOM_DIVISOR)
+        // Solving for scrollAmount: scrollAmount = SCROLL_ZOOM_DIVISOR * (log_base(orthographicSize) - 1)
+        scrollAmount = SCROLL_ZOOM_DIVISOR * (Mathf.Log(MainCamera.orthographicSize, SCROLL_ZOOM_BASE) - 1);
 
 
         // Update visual scales after camera adjustment
@@ -1054,16 +1086,12 @@ Press Right Mouse:";
         scrollAmount -= zoomDelta;
 
         // Issue #30: Clamp scrollAmount to prevent extreme zoom levels
-        // Min zoom: orthographicSize = 0.01 (very zoomed in)
-        // Max zoom: orthographicSize = 1000 (very zoomed out)
-        // Using formula: orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f)
-        // For min: 0.01 = 5^(1 + s/5) => log5(0.01) = 1 + s/5 => s = 5*(log5(0.01) - 1)
-        // For max: 1000 = 5^(1 + s/5) => log5(1000) = 1 + s/5 => s = 5*(log5(1000) - 1)
-        float minScrollAmount = 5f * (Mathf.Log(0.01f, 5f) - 1f); // ~-21.51
-        float maxScrollAmount = 5f * (Mathf.Log(1000f, 5f) - 1f); // ~16.51
+        // Using formula: orthographicSize = Mathf.Pow(SCROLL_ZOOM_BASE, 1 + scrollAmount / SCROLL_ZOOM_DIVISOR)
+        float minScrollAmount = SCROLL_ZOOM_DIVISOR * (Mathf.Log(MIN_ORTHOGRAPHIC_SIZE, SCROLL_ZOOM_BASE) - 1f);
+        float maxScrollAmount = SCROLL_ZOOM_DIVISOR * (Mathf.Log(MAX_ORTHOGRAPHIC_SIZE, SCROLL_ZOOM_BASE) - 1f);
         scrollAmount = Mathf.Clamp(scrollAmount, minScrollAmount, maxScrollAmount);
 
-        Camera.main.orthographicSize = Mathf.Pow(5, 1 + scrollAmount / 5f);
+        MainCamera.orthographicSize = Mathf.Pow(SCROLL_ZOOM_BASE, 1 + scrollAmount / SCROLL_ZOOM_DIVISOR);
         UpdateSelectionRadius();
         UpdateVisualScale();
     }
@@ -1086,8 +1114,8 @@ Press Right Mouse:";
                 isPinching = true;
                 lastPinchDistance = currentPinchDistance;
                 // Convert pinch center to world coordinates and store it
-                Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -Camera.main.transform.position.z);
-                lastPinchWorldCenter = Camera.main.ScreenToWorldPoint(screenPoint);
+                Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -MainCamera.transform.position.z);
+                lastPinchWorldCenter = MainCamera.ScreenToWorldPoint(screenPoint);
                 // Note: Don't adjust camera position here - just store the world position
                 // This prevents jumps when transitioning from 1 finger to 2 fingers
             }
@@ -1095,17 +1123,16 @@ Press Right Mouse:";
             {
                 // Continue pinching - calculate zoom based on distance change
                 float deltaDistance = currentPinchDistance - lastPinchDistance;
-                // Convert distance change to zoom factor (adjust sensitivity as needed)
-                float zoomSensitivity = 0.01f;
-                float zoomDelta = deltaDistance * zoomSensitivity;
+                // Convert distance change to zoom factor
+                float zoomDelta = deltaDistance * PINCH_ZOOM_SENSITIVITY;
                 // Apply zoom
                 HandleZoom(zoomDelta);
                 // Calculate how much the world position of the pinch center has changed due to zooming
-                Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -Camera.main.transform.position.z);
-                Vector3 currentWorldPinchCenter = Camera.main.ScreenToWorldPoint(screenPoint);
+                Vector3 screenPoint = new Vector3(pinchCenter.x, pinchCenter.y, -MainCamera.transform.position.z);
+                Vector3 currentWorldPinchCenter = MainCamera.ScreenToWorldPoint(screenPoint);
                 // Adjust camera position to keep the pinch center at the same world position
                 Vector3 worldOffset = lastPinchWorldCenter - currentWorldPinchCenter;
-                Camera.main.transform.position += worldOffset;
+                MainCamera.transform.position += worldOffset;
                 lastPinchDistance = currentPinchDistance;
             }
         }
@@ -1131,9 +1158,9 @@ Press Right Mouse:";
     /// </summary>
     private void UpdateVisualScale()
     {
-        if (Camera.main != null && Camera.main.orthographic) // Ensure it's an orthographic camera
+        if (MainCamera != null && MainCamera.orthographic) // Ensure it's an orthographic camera
         {
-            float orthographicSize = Camera.main.orthographicSize;
+            float orthographicSize = MainCamera.orthographicSize;
             // The scale factor should be proportional to the orthographic size.
             // If orthographicSize is 1, the scale is basePointVisualScale.
             // If orthographicSize is 2, the scale is 2 * basePointVisualScale.
@@ -1141,10 +1168,8 @@ Press Right Mouse:";
             float currentLineScale = baseLineVisualScale * orthographicSize;
 
             // Issue #30: Ensure minimum visual scales to prevent invisibility at extreme zoom
-            float minPointScale = 0.00005f; // Minimum point visual scale
-            float minLineScale = 0.0005f;   // Minimum line visual scale
-            currentPointScale = Mathf.Max(currentPointScale, minPointScale);
-            currentLineScale = Mathf.Max(currentLineScale, minLineScale);
+            currentPointScale = Mathf.Max(currentPointScale, MIN_POINT_VISUAL_SCALE);
+            currentLineScale = Mathf.Max(currentLineScale, MIN_LINE_VISUAL_SCALE);
 
             foreach (var point in points)
             {
@@ -1233,8 +1258,8 @@ Press Right Mouse:";
         }
         else if (IsDraggingCamera) // Added camera drag handling in OnDrag
         {
-            Vector3 delta = Camera.main.ScreenToWorldPoint(Input.mousePosition) - Camera.main.ScreenToWorldPoint(lastMousePosition);
-            Camera.main.transform.position -= delta;
+            Vector3 delta = MainCamera.ScreenToWorldPoint(Input.mousePosition) - MainCamera.ScreenToWorldPoint(lastMousePosition);
+            MainCamera.transform.position -= delta;
             lastMousePosition = Input.mousePosition;
         }
     }
@@ -1286,22 +1311,21 @@ Press Right Mouse:";
 
     private Vector3 ScreenToWorldPoint(Vector2 screenPosition)
     {
-        Vector3 screenPoint = new(screenPosition.x, screenPosition.y, -Camera.main.transform.position.z);
-        return Camera.main.ScreenToWorldPoint(screenPoint);
+        Vector3 screenPoint = new(screenPosition.x, screenPosition.y, -MainCamera.transform.position.z);
+        return MainCamera.ScreenToWorldPoint(screenPoint);
     }
 
     private void UpdateSelectionRadius()
     {
-        float zoomFactor = Camera.main.orthographicSize;
-        pointColliderThickness = basePointColliderThickness * zoomFactor;
+        float zoomFactor = MainCamera.orthographicSize;
+        pointColliderThickness = BASE_POINT_COLLIDER_THICKNESS * zoomFactor;
 
         // Issue #29: Ensure minimum selection radius in screen space for touch input
-        // Calculate minimum world-space radius that corresponds to ~50 pixels on screen
+        // Calculate minimum world-space radius that corresponds to MIN_SELECTION_PIXELS on screen
         float screenHeight = Screen.height;
-        float worldHeight = Camera.main.orthographicSize * 2f;
+        float worldHeight = MainCamera.orthographicSize * 2f;
         float pixelsPerWorldUnit = screenHeight / worldHeight;
-        float minScreenSpacePixels = 50f; // Minimum 50 pixels for comfortable touch/click
-        float minWorldSpaceRadius = minScreenSpacePixels / pixelsPerWorldUnit;
+        float minWorldSpaceRadius = MIN_SELECTION_PIXELS / pixelsPerWorldUnit;
 
         // Use the larger of the scaled radius or the minimum screen-space radius
         pointColliderThickness = Mathf.Max(pointColliderThickness, minWorldSpaceRadius);
