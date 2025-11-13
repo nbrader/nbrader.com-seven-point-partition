@@ -65,9 +65,6 @@ public class SevenPointPartitioner_MB : MonoBehaviour
     private const float SCROLL_ZOOM_BASE = 5f;
     private const float SCROLL_ZOOM_DIVISOR = 5f;
 
-    // Floating point comparison tolerance
-    private const float EPSILON = 1e-6f; // Tolerance for floating point comparisons
-
     // ========== Fields ==========
     private Camera cachedMainCamera;
     private float pointColliderThickness;
@@ -401,7 +398,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
             Vector2 pt = p.Position;
             float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
 
-            if (Mathf.Abs(cross) < EPSILON)
+            if (cross == 0)
             {
                 onLineCount++;
             }
@@ -797,7 +794,7 @@ public class SevenPointPartitioner_MB : MonoBehaviour
                     Vector2 v2 = p3 - p1;
                     float crossProduct = v1.x * v2.y - v1.y * v2.x;
 
-                    if (Mathf.Abs(crossProduct) < EPSILON)
+                    if (Mathf.Abs(crossProduct) == 0)
                     {
                         return true; // Found collinear points
                     }
@@ -1290,12 +1287,13 @@ Press Right Mouse:";
             Vector2 pt = p.Position;
             float cross = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x);
 
-            if (Mathf.Abs(cross) < EPSILON)
-                continue; // Point is on the lineWithPerpArrow, skip it
+            if (cross != 0f)
+                continue; // Point is on the lineWithPerpArrow
 
             if (cross > 0)
                 leftCount++;
-            else if (cross < 0)
+
+            if (cross < 0)
                 rightCount++;
         }
 
